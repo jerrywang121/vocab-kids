@@ -1,0 +1,42 @@
+[
+  {
+    "word": "abundant",
+    "definition": "present in large quantities",
+    "partOfSpeech": "adjective",
+    "synonyms": ["plentiful", "ample", "copious"],
+    "antonyms": ["scarce", "rare", "lacking"],
+    "exampleSentence": "The forest had abundant wildlife."
+  },
+  {
+    "word": "benevolent",
+    "definition": "well meaning and kindly",
+    "partOfSpeech": "adjective",
+    "synonyms": ["kind", "generous", "charitable"],
+    "antonyms": ["cruel", "mean", "selfish"],
+    "exampleSentence": "The benevolent teacher always helped her students."
+  },
+  {
+    "word": "cautious",
+    "definition": "careful to avoid danger or mistakes",
+    "partOfSpeech": "adjective",
+    "synonyms": ["careful", "wary", "prudent"],
+    "antonyms": ["reckless", "careless", "bold"],
+    "exampleSentence": "She was cautious when crossing the busy road."
+  },
+  {
+    "word": "diligent",
+    "definition": "having or showing care in one's work",
+    "partOfSpeech": "adjective",
+    "synonyms": ["hardworking", "industrious", "thorough"],
+    "antonyms": ["lazy", "careless", "negligent"],
+    "exampleSentence": "The diligent student always completed her homework on time."
+  },
+  {
+    "word": "eloquent",
+    "definition": "fluent or persuasive in speaking or writing",
+    "partOfSpeech": "adjective",
+    "synonyms": ["articulate", "expressive", "fluent"],
+    "antonyms": ["inarticulate", "mumbling"],
+    "exampleSentence": "He gave an eloquent speech at the school assembly."
+  }
+]
