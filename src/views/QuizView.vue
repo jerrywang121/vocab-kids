@@ -24,6 +24,13 @@ const selectedDeck  = computed(() => decksStore.decks.find(d => d.id === selecte
 const currentQ      = computed(() => session.value?.questions[currentIdx.value])
 const totalQ        = computed(() => session.value?.questions.length ?? 0)
 
+// For fill-gap: split prompt around ___ so we can animate the revealed word
+const gapParts = computed(() => {
+  if (currentQ.value?.type !== 'fillgap') return null
+  const parts = currentQ.value.prompt.split('___')
+  return parts.length === 2 ? parts : null
+})
+
 // ── Score breakdown
 const scoreByType = computed(() => {
   const map = { definition: [0,0], synonym: [0,0], fillgap: [0,0] }
@@ -153,7 +160,11 @@ function reset() {
 
       <div class="question-card card-surface mt-3" :class="feedbackClass">
         <p class="q-label text-muted">{{ currentQ.promptLabel }}</p>
-        <p class="q-prompt">
+        <!-- Fill-gap: once answered, animate the correct word into the gap -->
+        <p v-if="currentQ.type === 'fillgap' && gapParts && chosenIndex !== null" class="q-prompt">
+          {{ gapParts[0] }}<span class="gap-reveal" :key="currentIdx">{{ currentQ.gapWord }}</span>{{ gapParts[1] }}
+        </p>
+        <p v-else class="q-prompt">
           {{ currentQ.prompt }}
           <span v-if="currentQ.partOfSpeech" class="q-pos">({{ currentQ.partOfSpeech }})</span>
         </p>
@@ -256,4 +267,22 @@ body.dark .choice-btn.wrong   { background: #3a1a1a !important; color: #ef9a9a !
 .breakdown-row { display: flex; justify-content: space-between; font-size: 0.9rem; }
 .breakdown-label { font-weight: 600; }
 .breakdown-score { font-weight: 800; color: var(--color-primary); }
+
+.gap-reveal {
+  display: inline-block;
+  color: var(--color-accent, var(--color-primary));
+  font-weight: 900;
+  border-bottom: 3px solid currentColor;
+  padding: 0 0.1em;
+  animation: gap-flash 1s ease-out forwards;
+}
+@keyframes gap-flash {
+  0%   { opacity: 0; transform: scale(0.6) translateY(4px); }
+  25%  { opacity: 1; transform: scale(1.18) translateY(-2px); }
+  45%  { transform: scale(1); }
+  60%  { opacity: 0.3; }
+  75%  { opacity: 1; }
+  88%  { opacity: 0.3; }
+  100% { opacity: 1; transform: scale(1); }
+}
 </style>

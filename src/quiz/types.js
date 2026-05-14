@@ -81,10 +81,23 @@ export function synonymQuestion(card, allCards) {
 export function fillGapQuestion(card, allCards) {
   if (!card.exampleSentence) return null
 
-  // Replace the word in the sentence (case-insensitive) with ___
-  const regex = new RegExp(`\\b${card.word}\\b`, 'i')
-  const sentence = card.exampleSentence.replace(regex, '___')
-  if (!sentence.includes('___')) return null
+  // Try matching the base word first, then any inflected forms stored on the card
+  // (e.g. "Past Tense", "Present Participle", "Plural" from AI enrichment)
+  const escapeRegex = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const candidates = [card.word, ...Object.values(card.forms ?? {})].filter(Boolean)
+  let sentence = null
+  let matchedForm = null
+  for (const form of candidates) {
+    const replaced = card.exampleSentence.replace(new RegExp(`\\b${escapeRegex(form)}\\b`, 'i'), '___')
+    if (replaced.includes('___')) {
+      sentence = replaced
+      // Preserve original casing from the sentence
+      const match = card.exampleSentence.match(new RegExp(`\\b${escapeRegex(form)}\\b`, 'i'))
+      matchedForm = match ? match[0] : form
+      break
+    }
+  }
+  if (!sentence) return null
 
   const distractors = pickDistractors(allCards, card.id)
   if (distractors.length < 3) return null
@@ -96,6 +109,7 @@ export function fillGapQuestion(card, allCards) {
     type: 'fillgap',
     cardId: card.id,
     prompt: sentence,
+    gapWord: matchedForm,   // exact form (and casing) as it appears in the example sentence
     promptLabel: 'Fill in the gap:',
     choices,
     correctIndex: choices.indexOf(correctAnswer),
