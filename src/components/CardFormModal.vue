@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useSettingsStore } from '../stores/useSettingsStore'
+import { useCardsStore }    from '../stores/useCardsStore'
 
 const props = defineProps({
   modelValue: { type: Object, default: null }, // null = create mode
@@ -9,7 +10,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'save', 'save-many', 'cancel'])
 
-const settings = useSettingsStore()
+const settings   = useSettingsStore()
+const cardsStore = useCardsStore()
 
 const EMPTY = () => ({
   word: '', partOfSpeech: '', definition: '',
@@ -59,6 +61,15 @@ watch(() => props.modelValue, (val) => {
 async function runAILookup() {
   const word = form.value.word.trim()
   if (!word) return
+
+  // Reject if the word already exists in this deck (case-insensitive)
+  const existing = cardsStore.cardsForDeck(props.deckId)
+  const duplicate = existing.find(c => c.word.toLowerCase() === word.toLowerCase())
+  if (duplicate) {
+    aiError.value = `"${duplicate.word}" already exists in this deck.`
+    return
+  }
+
   view.value = 'ai-loading'
   aiError.value = ''
 

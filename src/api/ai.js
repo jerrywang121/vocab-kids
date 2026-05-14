@@ -54,6 +54,29 @@ function isAiConfigured(settings) {
   return true
 }
 
+// ── Rate limiter ──────────────────────────────────────────────────────────────
+
+const RATE_LIMIT_KEY = 'vocab-ai-rate-limit'
+
+function getRateTimestamps() {
+  try { return JSON.parse(localStorage.getItem(RATE_LIMIT_KEY) ?? '[]') } catch { return [] }
+}
+
+function checkAndRecordCall(settings) {
+  const limit = Number(settings.aiCallsPerMinute ?? 10)
+  if (!limit) return  // 0 = unlimited
+  const now = Date.now()
+  const windowStart = now - 60_000
+  const recent = getRateTimestamps().filter(t => t > windowStart)
+  if (recent.length >= limit) {
+    const retryMs = recent[0] + 60_000 - now
+    const retrySecs = Math.ceil(retryMs / 1_000)
+    throw new Error(`AI rate limit reached (${limit} calls/min). Try again in ${retrySecs} second${retrySecs !== 1 ? 's' : ''}.`)
+  }
+  recent.push(now)
+  try { localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(recent)) } catch { /* ignore */ }
+}
+
 // ── Core chat call ─────────────────────────────────────────────────────────────
 
 async function callChat(prompt, settings, temperature = 0.3) {
@@ -95,6 +118,9 @@ async function callChat(prompt, settings, temperature = 0.3) {
     [{ role: 'user', content: prompt }],
     temperature,
   )
+
+  // Enforce rate limit before making the request
+  checkAndRecordCall(settings)
 
   console.warn(`${TAG} callChat — provider: ${provider.id}, model: ${model}, authType: ${provider.authType}, apiKey set: ${!!apiKey}`)
   console.warn(`${TAG} callChat headers (masked)`, {

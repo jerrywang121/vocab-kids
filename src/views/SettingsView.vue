@@ -15,7 +15,7 @@ const progressStore = useProgressStore()
 const { speak }     = useSpeech()
 
 // AI settings bind DIRECTLY to the store — changes persist immediately
-const { aiProvider, aiApiKey, aiApiUrl, aiModel } = storeToRefs(settings)
+const { aiProvider, aiApiKey, aiApiUrl, aiModel, aiCallsPerMinute } = storeToRefs(settings)
 
 // Local copy for profile/appearance/quiz — committed only on Save
 const form = ref({
@@ -437,6 +437,17 @@ function clearAllData() {
           <p v-if="currentProvider?.disabled" class="ai-notice">
             ⚠️ {{ currentProvider.keyPlaceholder }}
           </p>
+
+          <!-- Rate limit -->
+          <div class="form-field">
+            <label>
+              AI Call Rate Limit:
+              <strong>{{ aiCallsPerMinute > 0 ? `${aiCallsPerMinute} calls/min` : 'Unlimited' }}</strong>
+            </label>
+            <input type="range" v-model.number="aiCallsPerMinute" min="0" max="60" step="1" />
+            <div class="range-labels text-muted"><span>Unlimited (0)</span><span>60/min</span></div>
+            <p class="ai-hint text-muted">Limits how many AI API calls the app makes per minute across all features.</p>
+          </div>
         </div>
       </section>
 
@@ -609,6 +620,10 @@ function clearAllData() {
   border-radius: 8px;
   padding: 0.5rem 0.75rem;
   margin: 0;
+}
+.ai-hint {
+  font-size: 0.8rem;
+  margin: 0.15rem 0 0;
 }
 .model-filter-input {
   margin-bottom: 0.35rem;
