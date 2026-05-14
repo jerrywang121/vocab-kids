@@ -4,6 +4,7 @@ import { useDecksStore }    from '../stores/useDecksStore'
 import { useCardsStore }    from '../stores/useCardsStore'
 import { useProgressStore } from '../stores/useProgressStore'
 import { useEnrich }        from '../composables/useEnrich'
+import { convertWordsToCards } from '../api/ai.js'
 import DeckCard       from '../components/DeckCard.vue'
 import DeckFormModal  from '../components/DeckFormModal.vue'
 import CardFormModal  from '../components/CardFormModal.vue'
@@ -119,6 +120,43 @@ async function handleImport(e) {
     if (file.name.endsWith('.json')) {
       const parsed = JSON.parse(text)
       rows = Array.isArray(parsed) ? parsed : parsed.cards ?? []
+    } else if (file.name.endsWith('.txt')) {
+      // Word-list format: one word / term per line; use AI to generate full cards
+      const words = text.split('\n').map(l => l.trim()).filter(Boolean)
+      if (!words.length) { importStatus.value = '⚠️ No words found in file.'; return }
+
+      // Reject words already in the deck (case-insensitive)
+      const existingWords = new Set(deckCards.value.map(c => c.word.toLowerCase()))
+      const newWords = words.filter(w => !existingWords.has(w.toLowerCase()))
+      const alreadyExist = words.length - newWords.length
+
+      if (!newWords.length) {
+        importStatus.value = `⚠️ All ${words.length} word${words.length !== 1 ? 's' : ''} already exist in this deck.`
+        return
+      }
+
+      importStatus.value = `⏳ Generating cards for ${newWords.length} word${newWords.length !== 1 ? 's' : ''} via AI…`
+
+      const BATCH = 5
+      let added = 0, skipped = 0, errors = 0
+      for (let i = 0; i < newWords.length; i += BATCH) {
+        const batch = newWords.slice(i, i + BATCH)
+        importStatus.value = `⏳ Processing words ${i + 1}–${Math.min(i + BATCH, newWords.length)} of ${newWords.length}…`
+        try {
+          const cards = await convertWordsToCards(batch)
+          if (!cards) { errors += batch.length; continue }
+          for (const card of cards) {
+            const result = cardsStore.addCard({ ...card, deckId: activeDeck.value.id })
+            result ? added++ : skipped++
+          }
+        } catch (err) {
+          importStatus.value = `❌ AI error: ${err.message}`
+          return
+        }
+      }
+
+      importStatus.value = `✅ Imported ${added} card${added !== 1 ? 's' : ''}${alreadyExist ? ` (${alreadyExist} word${alreadyExist !== 1 ? 's' : ''} already in deck)` : ''}${skipped ? ` (${skipped} duplicates skipped)` : ''}${errors ? ` (${errors} words failed)` : ''}.`
+      return
     } else {
       // CSV: first line = headers
       const lines = text.trim().split('\n')
@@ -199,7 +237,7 @@ function exportData() {
         <button v-if="activeDeck" class="btn btn-secondary" @click="activeDeck = null">← Decks</button>
         <button v-if="!activeDeck" class="btn btn-primary" @click="openNewDeck">+ New Deck</button>
         <button v-if="activeDeck" class="btn btn-primary" @click="openNewCard">+ Add Card</button>
-        <button v-if="activeDeck" class="btn btn-ghost" title="Import CSV or JSON" @click="triggerImport">
+        <button v-if="activeDeck" class="btn btn-ghost" title="Import CSV, JSON or TXT word list" @click="triggerImport">
           <span v-if="importLoading">⏳</span><span v-else>📥 Import</span>
         </button>
       </div>
@@ -237,6 +275,15 @@ function exportData() {
       <details class="import-hint mt-2">
         <summary>📋 Import format guide &amp; templates</summary>
         <div class="hint-body">
+          <div class="hint-section">
+            <strong>TXT</strong> — plain word list, one word / term per line.
+            Cards are generated automatically via AI (requires AI configured in Settings).
+            Words are sent in batches of 5 for efficiency.
+            <pre class="hint-code">abundant
+serendipity
+ephemeral
+run fast</pre>
+          </div>
           <div class="hint-section">
             <strong>CSV</strong> — one word per row, comma-separated.
             Synonyms &amp; antonyms use <code>;</code> as a separator within a cell.
@@ -306,7 +353,7 @@ abundant,present in large quantities,adjective,plentiful;ample,scarce;rare,The f
     </template>
 
     <!-- ── Hidden import file input ──────── -->
-    <input ref="importInput" type="file" accept=".csv,.json" class="hidden" @change="handleImport" />
+    <input ref="importInput" type="file" accept=".csv,.json,.txt" class="hidden" @change="handleImport" />
 
     <!-- ── Deck form modal ────────────────── -->
     <DeckFormModal

@@ -12,6 +12,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const aiApiKey             = ref('')
   const aiProvider           = ref('openai')  // provider ID from providers.js
   const aiModel              = ref('')         // selected model ID
+  const aiCallsPerMinute       = ref(10)         // rate limit: max AI calls per minute (0 = unlimited)
   const userAgeGroup         = ref('6-8')      // '3-5' | '6-8' | '9-11' | '12+'
 
   // TTS (Web Speech API)
@@ -30,6 +31,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if (updates.aiApiKey             !== undefined) aiApiKey.value             = updates.aiApiKey
     if (updates.aiProvider           !== undefined) aiProvider.value           = updates.aiProvider
     if (updates.aiModel              !== undefined) aiModel.value              = updates.aiModel
+    if (updates.aiCallsPerMinute       !== undefined) aiCallsPerMinute.value       = Math.max(0, Math.min(600, Number(updates.aiCallsPerMinute) || 0))
     if (updates.userAgeGroup !== undefined && ['3-5','6-8','9-11','12+'].includes(updates.userAgeGroup))
       userAgeGroup.value = updates.userAgeGroup
     if (updates.ttsVoice  !== undefined) ttsVoice.value  = updates.ttsVoice
@@ -37,7 +39,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if (updates.ttsRate   !== undefined) ttsRate.value   = Number(updates.ttsRate)
   }
 
-  return { userName, avatar, colorScheme, theme, questionsPerQuiz, dictionaryApiEnabled, aiApiUrl, aiApiKey, aiProvider, aiModel, userAgeGroup, ttsVoice, ttsPitch, ttsRate, updateSettings }
+  return { userName, avatar, colorScheme, theme, questionsPerQuiz, dictionaryApiEnabled, aiApiUrl, aiApiKey, aiProvider, aiModel, aiCallsPerMinute, userAgeGroup, ttsVoice, ttsPitch, ttsRate, updateSettings }
 }, {
   persist: {
     key: 'vocab-settings',
