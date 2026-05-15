@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useDecksStore } from '../stores/useDecksStore'
 import { useCardsStore } from '../stores/useCardsStore'
 
@@ -9,6 +9,7 @@ const cardsStore = useCardsStore()
 // ── State machine:
 //    'hub' | 'hangman-select' | 'hangman-play' | 'hangman-result'
 //    | 'scramble-select' | 'scramble-play' | 'scramble-result'
+//    | 'speed-select'    | 'speed-play'    | 'speed-result'
 const phase = ref('hub')
 const selectedDeckId = ref(null)
 const secretWord = ref('')
@@ -69,6 +70,7 @@ function playAgain() {
 }
 
 function goHub() {
+  clearInterval(speedTimerHandle.value)
   phase.value = 'hub'
   selectedDeckId.value = null
 }
@@ -200,6 +202,131 @@ const emptySlots = computed(() =>
     ? scrambleCard.value.word.trim().length - placedTiles.value.length
     : 0
 )
+
+// ════════════════════════════════════════════════════════════════
+// SPEED SPELL
+// ════════════════════════════════════════════════════════════════
+
+const SPEED_DURATION    = 60   // seconds
+const SPEED_BONUS       = 3    // seconds added per correct answer
+const SPEED_PENALTY     = 5    // seconds deducted per skip
+
+const speedCards        = ref([])
+const speedIdx          = ref(0)
+const speedInputVal     = ref('')
+const speedScore        = ref(0)
+const speedTimeLeft     = ref(SPEED_DURATION)
+const speedTimerHandle  = ref(null)
+const speedFeedback     = ref(null)    // 'correct' | 'wrong' | null
+const speedInputRef     = ref(null)    // template ref for auto-focus
+
+const speedCard = computed(() => speedCards.value[speedIdx.value] ?? null)
+const speedDeck = computed(() => decksStore.decks.find(d => d.id === selectedDeckId.value))
+
+const speedTimerPct = computed(() => (speedTimeLeft.value / SPEED_DURATION) * 100)
+const speedTimerColor = computed(() => {
+  const p = speedTimerPct.value
+  if (p > 50) return 'var(--color-primary)'
+  if (p > 25) return '#f57c00'
+  return '#d32f2f'
+})
+
+// Auto-submit when the typed word matches (no Enter needed)
+watch(speedInputVal, val => {
+  if (!speedCard.value || speedFeedback.value || phase.value !== 'speed-play') return
+  if (val.trim().toLowerCase() === speedCard.value.word.trim().toLowerCase()) submitSpeed()
+})
+
+function startSpeed(deckId) {
+  const cards = cardsStore.cardsForDeck(deckId)
+  if (!cards.length) return
+
+  const seen   = new Set()
+  const unique = cards.filter(c => {
+    const key = c.word.trim().toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  selectedDeckId.value  = deckId
+  speedCards.value      = shuffleArray(unique)
+  speedIdx.value        = 0
+  speedInputVal.value   = ''
+  speedScore.value      = 0
+  speedTimeLeft.value   = SPEED_DURATION
+  speedFeedback.value   = null
+  phase.value           = 'speed-play'
+
+  clearInterval(speedTimerHandle.value)
+  speedTimerHandle.value = setInterval(() => {
+    speedTimeLeft.value--
+    if (speedTimeLeft.value <= 0) {
+      speedTimeLeft.value = 0
+      endSpeed()
+    }
+  }, 1000)
+
+  nextTick(() => speedInputRef.value?.focus())
+}
+
+function submitSpeed() {
+  if (speedFeedback.value || phase.value !== 'speed-play') return
+  const answer = speedInputVal.value.trim().toLowerCase()
+  const target = speedCard.value?.word.trim().toLowerCase()
+
+  if (answer === target) {
+    speedScore.value++
+    speedTimeLeft.value   = Math.min(SPEED_DURATION, speedTimeLeft.value + SPEED_BONUS)
+    speedFeedback.value   = 'correct'
+    speedInputVal.value   = ''
+    setTimeout(() => {
+      speedFeedback.value = null
+      speedIdx.value++
+      if (speedIdx.value >= speedCards.value.length) {
+        endSpeed()
+      } else {
+        nextTick(() => speedInputRef.value?.focus())
+      }
+    }, 500)
+  } else {
+    speedFeedback.value = 'wrong'
+    setTimeout(() => {
+      speedFeedback.value = null
+      speedInputVal.value = ''
+      nextTick(() => speedInputRef.value?.focus())
+    }, 600)
+  }
+}
+
+function skipSpeed() {
+  if (speedFeedback.value || phase.value !== 'speed-play') return
+  speedInputVal.value = ''
+  speedIdx.value++
+  speedTimeLeft.value = Math.max(0, speedTimeLeft.value - SPEED_PENALTY)
+  if (speedIdx.value >= speedCards.value.length || speedTimeLeft.value <= 0) {
+    speedTimeLeft.value = Math.max(0, speedTimeLeft.value)
+    endSpeed()
+  } else {
+    nextTick(() => speedInputRef.value?.focus())
+  }
+}
+
+function endSpeed() {
+  clearInterval(speedTimerHandle.value)
+  phase.value = 'speed-result'
+}
+
+function goSpeedSelect() {
+  clearInterval(speedTimerHandle.value)
+  phase.value = 'speed-select'
+}
+
+function playSpeedAgain() {
+  startSpeed(selectedDeckId.value)
+}
+
+onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
 </script>
 
 <template>
@@ -231,14 +358,14 @@ const emptySlots = computed(() =>
           <span class="game-arrow">›</span>
         </button>
 
-        <div class="game-card card-surface game-coming-soon">
+        <button class="game-card card-surface" @click="phase = 'speed-select'">
           <div class="game-icon">⚡</div>
           <div class="game-info">
             <h2 class="game-title">Speed Spell</h2>
-            <p class="game-desc text-muted">Coming soon…</p>
+            <p class="game-desc text-muted">Read the definition and type the word before time runs out!</p>
           </div>
-          <span class="game-badge">Soon</span>
-        </div>
+          <span class="game-arrow">›</span>
+        </button>
       </div>
     </template>
 
@@ -496,6 +623,130 @@ const emptySlots = computed(() =>
         <div class="flex gap-2 mt-3" style="flex-wrap:wrap;justify-content:center">
           <button class="btn btn-primary" @click="playScrambleAgain">🔄 New Word</button>
           <button class="btn btn-ghost" @click="phase = 'scramble-select'">Change Deck</button>
+          <button class="btn btn-ghost" @click="goHub">🎮 All Games</button>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═══════════════ SPEED – DECK SELECT ═══════════════ -->
+    <template v-else-if="phase === 'speed-select'">
+      <div class="back-row">
+        <button class="btn btn-ghost" @click="goHub">← Back</button>
+      </div>
+      <h1>⚡ Speed Spell</h1>
+      <p class="text-muted mt-1">Choose a deck — you have {{ SPEED_DURATION }} seconds!</p>
+
+      <p v-if="!decksStore.decks.length" class="text-muted mt-2">
+        No decks yet — <RouterLink to="/manage">create one first</RouterLink>.
+      </p>
+
+      <div class="deck-list mt-2">
+        <button
+          v-for="deck in decksStore.decks"
+          :key="deck.id"
+          class="deck-btn card-surface"
+          :disabled="!cardsStore.cardsForDeck(deck.id).length"
+          @click="startSpeed(deck.id)"
+        >
+          <span class="deck-name">{{ deck.name }}</span>
+          <span class="deck-count text-muted">
+            {{ cardsStore.cardsForDeck(deck.id).length }} cards
+            <span v-if="!cardsStore.cardsForDeck(deck.id).length">&nbsp;(empty)</span>
+          </span>
+        </button>
+      </div>
+    </template>
+
+    <!-- ═══════════════ SPEED – PLAY / RESULT ═══════════════ -->
+    <template v-else-if="phase === 'speed-play' || phase === 'speed-result'">
+      <div class="back-row">
+        <button class="btn btn-ghost" @click="goSpeedSelect">← Decks</button>
+        <span class="deck-tag text-muted">{{ speedDeck?.name }}</span>
+      </div>
+
+      <h1>⚡ Speed Spell</h1>
+
+      <!-- Timer bar -->
+      <div class="speed-timer-track mt-2">
+        <div
+          class="speed-timer-fill"
+          :style="{ width: speedTimerPct + '%', background: speedTimerColor }"
+        ></div>
+      </div>
+
+      <div class="speed-meta mt-1">
+        <span class="speed-time" :class="{ 'speed-time-low': speedTimeLeft <= 10 }">
+          ⏱ {{ speedTimeLeft }}s
+        </span>
+        <span class="text-muted">
+          {{ speedScore }} ✓&nbsp; | &nbsp;{{ speedIdx }}&thinsp;/&thinsp;{{ speedCards.length }} words
+        </span>
+      </div>
+
+      <!-- Definition clue card -->
+      <div
+        v-if="speedCard"
+        class="speed-clue card-surface mt-2"
+        :class="{
+          'animate-correct': speedFeedback === 'correct',
+          'animate-wrong':   speedFeedback === 'wrong',
+        }"
+      >
+        <div class="speed-clue-top">
+          <span v-if="speedCard.partOfSpeech" class="pos-badge">{{ speedCard.partOfSpeech }}</span>
+          <span class="word-dots">
+            <span v-for="n in speedCard.word.trim().length" :key="n" class="word-dot">●</span>
+          </span>
+        </div>
+        <p class="speed-def">{{ speedCard.definition }}</p>
+        <p v-if="speedCard.exampleSentence" class="speed-example text-muted">
+          "{{ speedCard.exampleSentence }}"
+        </p>
+      </div>
+
+      <!-- Typing input -->
+      <div class="speed-input-wrap mt-3">
+        <input
+          ref="speedInputRef"
+          v-model="speedInputVal"
+          class="speed-input"
+          type="text"
+          placeholder="Type the word…"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          :disabled="speedFeedback !== null || phase === 'speed-result'"
+          @keydown.enter.prevent="submitSpeed"
+        />
+      </div>
+
+      <div class="flex gap-2 mt-2" style="flex-wrap:wrap">
+        <button
+          class="btn btn-primary"
+          :disabled="!speedInputVal.trim() || speedFeedback !== null || phase === 'speed-result'"
+          @click="submitSpeed"
+        >✓ Submit</button>
+        <button
+          class="btn btn-ghost"
+          :disabled="speedFeedback !== null || phase === 'speed-result'"
+          @click="skipSpeed"
+        >⏭ Skip <span class="skip-penalty">−{{ SPEED_PENALTY }}s</span></button>
+      </div>
+
+      <!-- Result overlay -->
+      <div v-if="phase === 'speed-result'" class="result-banner card-surface mt-3 text-center">
+        <div class="result-emoji">
+          {{ speedScore / speedCards.length >= 0.8 ? '🌟' : speedScore / speedCards.length >= 0.5 ? '😊' : '💪' }}
+        </div>
+        <h2 class="result-title">
+          {{ speedScore / speedCards.length >= 0.8 ? 'Amazing!' : speedScore / speedCards.length >= 0.5 ? 'Good job!' : 'Keep practising!' }}
+        </h2>
+        <p class="speed-result-score">{{ speedScore }}&thinsp;/&thinsp;{{ speedCards.length }}</p>
+        <p class="text-muted" style="font-size:0.9rem">words spelled correctly</p>
+        <div class="flex gap-2 mt-3" style="flex-wrap:wrap;justify-content:center">
+          <button class="btn btn-primary" @click="playSpeedAgain">🔄 Play Again</button>
+          <button class="btn btn-ghost" @click="phase = 'speed-select'">Change Deck</button>
           <button class="btn btn-ghost" @click="goHub">🎮 All Games</button>
         </div>
       </div>
@@ -782,6 +1033,113 @@ const emptySlots = computed(() =>
   background: #e8f5e9;
   border-color: #388e3c;
   color: #1b5e20;
+}
+
+/* ── Speed Spell ─────────────────────────── */
+.speed-timer-track {
+  height: 14px;
+  background: var(--color-surface-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.speed-timer-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.9s linear, background 0.5s;
+}
+
+.speed-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+.speed-time {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+.speed-time-low {
+  color: #d32f2f;
+  animation: pulse-red 0.5s ease infinite alternate;
+}
+@keyframes pulse-red {
+  from { opacity: 1; }
+  to   { opacity: 0.5; }
+}
+
+.speed-clue {
+  padding: 1rem 1.25rem;
+}
+.speed-clue-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.pos-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+.word-dots {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.word-dot {
+  font-size: 0.55rem;
+  color: var(--color-primary);
+  line-height: 1;
+}
+.speed-def {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.speed-example {
+  font-size: 0.85rem;
+  font-style: italic;
+  margin-top: 0.35rem;
+}
+
+.speed-input-wrap { display: flex; }
+.speed-input {
+  flex: 1;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 3px solid var(--color-primary);
+  border-radius: 0.85rem;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.4rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.speed-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+.speed-input:disabled { opacity: 0.7; }
+
+.skip-penalty {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin-left: 0.2rem;
+}
+
+.speed-result-score {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.5rem;
+  color: var(--color-primary);
+  margin-top: 0.5rem;
 }
 
 </style>
