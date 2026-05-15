@@ -25,7 +25,8 @@ VocabKids is a browser-based flashcard app to help kids learn English vocabulary
 | Styling | CSS3 + Custom Properties | Theme switching without JS |
 | Storage | `localStorage` via Pinia plugin | Zero infrastructure |
 | Dictionary API | `api.dictionaryapi.dev` | Free, no key required |
-| AI API | User-supplied (OpenAI-compatible) | Optional enrichment & quiz generation |
+| AI API | User-configured; 17+ providers supported | Optional enrichment & quiz generation |
+| TTS | Web Speech API (`SpeechSynthesis`) | Built-in, no extra dependency |
 
 ---
 
@@ -66,10 +67,15 @@ VocabKids is a browser-based flashcard app to help kids learn English vocabulary
 
 ### 4.6 Settings (`/settings`)
 - User name and avatar selection
+- User age group selector: `3–5`, `6–8`, `9–11`, `12+` (affects AI prompt complexity)
 - Colour scheme selector (Pink, Blue, Green, Purple, Orange)
+- Theme toggle: Light / Dark / Auto (follows OS preference)
 - Questions per quiz (default 30)
 - Dictionary API toggle (on/off)
-- AI API endpoint URL + API key (stored encrypted with Web Crypto or obfuscated)
+- AI provider selector (17+ built-in providers; see §8)
+- AI model selector (dynamically fetched from provider's `/models` endpoint)
+- AI rate limit (max calls per minute; 0 = unlimited)
+- TTS (Text-to-Speech) voice, pitch, and rate via Web Speech API
 - Export data button → downloads JSON file
 - Import data button → file picker → merges data
 - Clear all data button (with confirmation)
@@ -89,7 +95,7 @@ All state lives in four Pinia stores, each persisted to a separate `localStorage
 | `useProgressStore` | `vocab-progress` | `progress[]`, `quizSessions[]`, `achievementSnapshots[]` |
 | `useSettingsStore` | `vocab-settings` | `settings` object |
 
-> **No direct `localStorage` calls outside of Pinia stores.**
+> **No direct `localStorage` calls outside of Pinia stores** (except the AI rate-limit timestamp buffer stored under `vocab-ai-rate-limit`).
 
 ### 5.2 FlashCard Fields
 
@@ -98,6 +104,7 @@ All state lives in four Pinia stores, each persisted to a separate `localStorage
 | `id` | UUID string | |
 | `word` | string | |
 | `partOfSpeech` | string | noun, verb, adj, adv, etc. |
+| `forms` | object | Inflected forms, e.g. `{ "Past Tense": "ran", "Plural": "cats" }` |
 | `definition` | string | |
 | `synonyms` | string[] | |
 | `antonyms` | string[] | |
@@ -112,11 +119,19 @@ Uniqueness: `word + definition` pair must be unique per deck.
 | Field | Type |
 |---|---|
 | `cardId` | UUID string |
-| `correctCount` | number |
-| `wrongCount` | number |
+| `correctCount` | number (capped at 10) |
+| `wrongCount` | number (capped at 10) |
 | `lastCorrectAt` | ISO8601 \| null |
 | `lastWrongAt` | ISO8601 \| null |
 | `lastReviewedAt` | ISO8601 \| null |
+
+**Decay-based scoring** — `useProgressStore` exposes two scoring functions:
+- `cardScore(cardId)` — time-decayed correct ratio; counts decay over 7 days (`COUNT_DECAY_DAYS`)
+- `cardScoreDecayed(cardId)` — same but further multiplied by a review-recency factor (30-day decay)
+
+These scores drive the weighted card shuffle in quiz generation (lower score = shown more often).
+
+When a count hits the cap of 10 the opposing count is decremented by 1 to prevent permanent masking.
 
 ### 5.4 Achievement Snapshots
 
@@ -131,7 +146,7 @@ Snapshots are appended daily when the user opens the app:
 
 ---
 
-## 6. Colour Themes
+## 6. Colour Themes & Dark Mode
 
 Themes are CSS classes applied to `<body>`. Each defines a set of custom properties:
 
@@ -141,23 +156,32 @@ Themes are CSS classes applied to `<body>`. Each defines a set of custom propert
 .scheme-green { --color-primary: #388e3c; --color-accent: #81c784; ... }
 ```
 
+`App.vue` also toggles a `.dark` class on `<body>` based on the `theme` setting (`'light'` | `'dark'` | `'auto'`). In `auto` mode the OS `prefers-color-scheme` media query is observed reactively.
+
 ---
 
 ## 7. Quiz Generation Logic
 
 ```
-generator.js
-  input: deck (cards[]), questionCount (default 30), seed?
-  1. Shuffle cards
-  2. For each question slot, pick a type: 'definition' | 'synonym' | 'fillgap'
+generator.js  buildQuiz(cards, deckId, questionCount, scoreOf?)
+  1. Weighted shuffle — lower-scored cards (via scoreOf) float to the top;
+     pure random order if no scorer supplied.
+  2. Deduplicate by word + partOfSpeech → uniqueCards[].
+     Abort (return null) if fewer than 4 unique cards.
+  3. Cycle through uniqueCards[]; for each slot pick a random factory:
+       definitionQuestion | synonymQuestion | fillGapQuestion
      - Skip 'synonym' if card has no synonyms/antonyms
-     - Skip 'fillgap' if card has no exampleSentence
-  3. Pick 3 distractor cards (different word, same deck)
-  4. Shuffle correct answer + distractors
-  output: Question[]
+     - Skip 'fillgap' if card has no exampleSentence (or no word match in sentence)
+     - fillGapQuestion also tries inflected forms from card.forms before giving up
+  4. Repeat up to questionCount × 6 attempts to fill all slots.
+  output: QuizSession { id, deckId, generatedAt, questions[] }
 ```
 
-If AI is configured, `ai.js` can be called instead to generate the full question set, which is then cached in `quizSessions[]` against the deck ID.
+### Fill-the-Gap matching
+The gap is created by replacing the first occurrence of `card.word` (or any value in `card.forms`) in the example sentence using a word-boundary regex. The exact form and casing as it appears in the sentence is preserved in the `gapWord` field.
+
+### Distractor formatting
+Fill-the-gap choices are formatted as `word (partOfSpeech)` to avoid ambiguity between homophones.
 
 ---
 
@@ -169,12 +193,52 @@ If AI is configured, `ai.js` can be called instead to generate the full question
 - Result merged into card fields (existing values not overwritten)
 - No API key required
 
-### AI API (`api/ai.js`)
-- Endpoint: user-configured (OpenAI-compatible `/v1/chat/completions`)
-- Used for:
-  1. Enriching missing card fields when dictionary API is insufficient
-  2. Generating quiz question sets (stored and reused)
-- Graceful degradation: if AI unavailable, fall back to `generator.js`
+### AI API (`api/ai.js` + `api/providers.js`)
+
+#### Supported providers (17+)
+
+| Provider | Format | Auth |
+|---|---|---|
+| OpenAI | openai | Bearer |
+| Anthropic | anthropic | x-api-key |
+| OpenRouter | openai | Bearer |
+| Google Gemini | openai (compat.) | Bearer |
+| Google Vertex AI | openai | Bearer |
+| Azure OpenAI | azure | api-key |
+| Ollama (Local) | openai | none |
+| Ollama (Cloud) | openai | Bearer |
+| Groq | openai | Bearer |
+| Mistral | openai | Bearer |
+| xAI (Grok) | openai | Bearer |
+| DeepSeek | openai | Bearer |
+| Together AI | openai | Bearer |
+| Fireworks AI | openai | Bearer |
+| Perplexity | openai | Bearer |
+| Cohere | cohere | Bearer |
+| Venice | openai | Bearer |
+| MiniMax | minimax | Bearer |
+| Custom / Self-hosted | openai | Bearer |
+
+Provider definitions live in `api/providers.js` (`PROVIDERS` array). Each entry declares `baseUrl`, wire format, auth type, chat path, and model-listing path. `getProvider(id)` resolves a provider by ID.
+
+#### Public functions exported by `api/ai.js`
+
+| Function | Purpose |
+|---|---|
+| `enrichWithAI(word, existing)` | Fill missing card fields; age-group–aware prompt |
+| `convertWordsToCards(words[])` | Bulk convert a word list → FlashCard objects (one per part of speech) |
+| `generateQuizWithAI(cards, count)` | Generate quiz questions; result cached in `quizSessions[]` |
+| `listModels(settingsObj)` | Fetch available model IDs from the provider's `/models` endpoint |
+
+#### Rate limiting
+`api/ai.js` enforces a configurable calls-per-minute limit (stored in `vocab-ai-rate-limit` in localStorage). Default: 10 calls/min; 0 = unlimited.
+
+#### Age-group awareness
+All AI prompts are tailored to the `userAgeGroup` setting:
+- `'3-5'` → very simple words, short sentences
+- `'6-8'` → simple vocabulary, friendly language
+- `'9-11'` → moderate vocabulary, clear language
+- `'12+'` → richer vocabulary, more nuanced
 
 ---
 
@@ -202,11 +266,13 @@ Triggered from Settings. Produces a file `vocabkids-backup-YYYY-MM-DD.json`:
 ## 10. UI / UX Principles
 
 - **Large tap targets** (min 44×44 px) for touch screens / small hands
-- **Readable fonts**: Google Fonts — *Nunito* (body) or *Fredoka One* (headings)
+- **Readable fonts**: Google Fonts — *Nunito* (body) and *Fredoka One* (headings)
 - **Card flip animation**: CSS 3D transform on `.card` → `.card.flipped`
 - **Quiz feedback**: green pulse on correct, red shake on wrong
 - **Persistent header**: avatar + name + current deck indicator
 - **Responsive**: works on tablet and desktop; primary layout is single-column
+- **Dark mode**: `.dark` body class toggled by App.vue based on `theme` setting
+- **Text-to-speech**: `composables/useSpeech.js` wraps `SpeechSynthesis`; voice, pitch, and rate are configurable in Settings
 
 ---
 
@@ -221,13 +287,13 @@ lingokids-local/
 │   └── avatars/
 ├── src/
 │   ├── main.js
-│   ├── App.vue
+│   ├── App.vue                   # theme + dark-mode class binding
 │   ├── router/index.js
 │   ├── stores/
 │   │   ├── useDecksStore.js
 │   │   ├── useCardsStore.js
-│   │   ├── useProgressStore.js
-│   │   └── useSettingsStore.js
+│   │   ├── useProgressStore.js   # decay scoring, quiz session cache
+│   │   └── useSettingsStore.js   # theme, age group, TTS, AI provider/model/rate
 │   ├── views/
 │   │   ├── HomeView.vue
 │   │   ├── ManageView.vue
@@ -239,16 +305,18 @@ lingokids-local/
 │   │   ├── AppHeader.vue
 │   │   ├── FlashCard.vue
 │   │   ├── DeckCard.vue
-│   │   ├── QuizQuestion.vue
-│   │   └── ProgressBar.vue
+│   │   ├── DeckFormModal.vue     # deck create / edit dialog
+│   │   └── CardFormModal.vue     # card create / edit dialog
 │   ├── composables/
-│   │   └── useEnrich.js
+│   │   ├── useEnrich.js          # dictionary → AI enrichment pipeline
+│   │   └── useSpeech.js          # Web Speech API TTS wrapper
 │   ├── api/
 │   │   ├── dictionary.js
-│   │   └── ai.js
+│   │   ├── ai.js                 # enrich / convert / quiz / listModels
+│   │   └── providers.js          # PROVIDERS registry (17+ entries)
 │   ├── quiz/
-│   │   ├── generator.js
-│   │   └── types.js
+│   │   ├── generator.js          # weighted shuffle + session builder
+│   │   └── types.js              # definitionQuestion / synonymQuestion / fillGapQuestion
 │   ├── utils/
 │   │   └── uuid.js
 │   └── assets/
@@ -266,40 +334,22 @@ npm run build    # output → dist/
 npm run preview
 ```
 
-## 13. Phased Implementation Plan
+## 13. Settings Store Reference
 
-### Phase 1 — Foundation
-- [ ] Scaffold with `npm create vite@latest` (Vue template)
-- [ ] Install: `vue-router`, `pinia`, `pinia-plugin-persistedstate`, `chart.js`, `vue-chartjs`
-- [ ] `src/main.js` — createApp, router, pinia with persistedstate plugin
-- [ ] `src/App.vue` — `<RouterView>` + theme class binding via `watchEffect`
-- [ ] `src/router/index.js` — hash history, 6 lazy-loaded routes
-- [ ] `src/stores/` — all four Pinia stores with persist config
-- [ ] `src/assets/main.css` — CSS custom properties for all 5 colour schemes
-- [ ] `HomeView.vue` skeleton
-
-### Phase 2 — Management Mode
-- [ ] `ManageView.vue` — Deck CRUD + card CRUD
-- [ ] `DeckCard.vue`, card list/form components
-- [ ] Bulk import from CSV/JSON
-- [ ] `api/dictionary.js` + `composables/useEnrich.js`
-
-### Phase 3 — Learning Mode
-- [ ] `FlashCard.vue` — CSS 3D flip animation
-- [ ] `LearnView.vue` — Got-it / Keep-practising → `useProgressStore`
-
-### Phase 4 — Quiz Mode
-- [ ] `src/quiz/types.js` — question factories
-- [ ] `src/quiz/generator.js` — mixed session builder
-- [ ] `QuizQuestion.vue` — multiple choice with feedback animation
-- [ ] `QuizView.vue` — flow + result screen
-
-### Phase 5 — Achievements & Settings
-- [ ] `AchievementsView.vue` — `vue-chartjs` line chart + progress bars
-- [ ] Daily snapshot logic in `useProgressStore`
-- [ ] `SettingsView.vue` — avatar, scheme, quiz config, export/import/clear
-
-### Phase 6 — AI Integration
-- [ ] `api/ai.js` — OpenAI-compatible wrapper
-- [ ] AI quiz generation + caching in `useProgressStore`
-- [ ] AI enrichment fallback in `useEnrich.js`
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `userName` | string | `'Learner'` | |
+| `avatar` | string | `'avatar-1.svg'` | filename in `public/avatars/` |
+| `colorScheme` | string | `'scheme-blue'` | CSS body class |
+| `theme` | string | `'auto'` | `'light'` \| `'dark'` \| `'auto'` |
+| `questionsPerQuiz` | number | `30` | |
+| `dictionaryApiEnabled` | boolean | `true` | |
+| `aiProvider` | string | `'openai'` | provider ID from `providers.js` |
+| `aiApiUrl` | string | `''` | override / custom base URL |
+| `aiApiKey` | string | `''` | stored in localStorage (plain) |
+| `aiModel` | string | `''` | empty = use provider's `defaultModel` |
+| `aiCallsPerMinute` | number | `10` | 0 = unlimited |
+| `userAgeGroup` | string | `'6-8'` | `'3-5'` \| `'6-8'` \| `'9-11'` \| `'12+'` |
+| `ttsVoice` | string | `''` | `voiceURI`; empty = browser default |
+| `ttsPitch` | number | `1` | 0.5 – 2 |
+| `ttsRate` | number | `1` | 0.5 – 2 |
