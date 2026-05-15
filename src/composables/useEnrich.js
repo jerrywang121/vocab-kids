@@ -10,7 +10,7 @@ import { lookupWord } from '../api/dictionary'
  * @param {object} existing  Already-known fields (won't be overwritten)
  * @returns {Promise<object>} Merged card fields
  */
-export async function useEnrich() {
+export function useEnrich() {
   async function enrich(word, existing = {}) {
     const settings = useSettingsStore()
 
