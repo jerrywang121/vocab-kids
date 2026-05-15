@@ -53,11 +53,30 @@ const cardSearch     = ref('')
 
 const filteredCards = computed(() => {
   const q = cardSearch.value.trim().toLowerCase()
-  if (!q) return deckCards.value
-  return deckCards.value.filter(c =>
+  let result = deckCards.value
+  if (q) result = result.filter(c =>
     c.word.toLowerCase().includes(q) || c.definition.toLowerCase().includes(q)
   )
+  const field = settingsStore.cardSortField
+  const dir   = settingsStore.cardSortDir
+  return [...result].sort((a, b) => {
+    let cmp = 0
+    if (field === 'name') {
+      cmp = a.word.localeCompare(b.word)
+    } else if (field === 'score') {
+      cmp = progressStore.cardScore(a.id) - progressStore.cardScore(b.id)
+    } else {
+      // sort by createdAt
+      const aDate = a.createdAt ?? ''
+      const bDate = b.createdAt ?? ''
+      cmp = aDate.localeCompare(bDate)
+    }
+    return dir === 'desc' ? -cmp : cmp
+  })
 })
+
+function setSortField(field) { settingsStore.updateSettings({ cardSortField: field }) }
+function toggleSortDir()     { settingsStore.updateSettings({ cardSortDir: settingsStore.cardSortDir === 'asc' ? 'desc' : 'asc' }) }
 
 function openNewCard()       { editingCard.value = null; showCardForm.value = true }
 function openEditCard(card)  { editingCard.value = card; showCardForm.value = true }
@@ -271,6 +290,29 @@ function exportData() {
         class="search-input mt-2"
         placeholder="🔍 Search cards…"
       />
+
+      <!-- Sort controls -->
+      <div class="sort-bar mt-1">
+        <span class="sort-label">Sort:</span>
+        <button
+          class="sort-btn"
+          :class="{ active: settingsStore.cardSortField === 'createdAt' }"
+          @click="setSortField('createdAt')"
+        >Date added</button>
+        <button
+          class="sort-btn"
+          :class="{ active: settingsStore.cardSortField === 'name' }"
+          @click="setSortField('name')"
+        >Name</button>
+        <button
+          class="sort-btn"
+          :class="{ active: settingsStore.cardSortField === 'score' }"
+          @click="setSortField('score')"
+        >Score</button>
+        <button class="sort-dir-btn" :title="settingsStore.cardSortDir === 'asc' ? 'Ascending' : 'Descending'" @click="toggleSortDir">
+          {{ settingsStore.cardSortDir === 'asc' ? '↑ Asc' : '↓ Desc' }}
+        </button>
+      </div>
       <p v-if="importStatus" class="import-status mt-1">{{ importStatus }}</p>
 
       <!-- Import format hints + template downloads -->
@@ -521,6 +563,52 @@ code {
   flex-wrap: wrap;
   gap: 0.6rem;
 }
+/* ── Sort bar ───────────────────────────────────────── */
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.sort-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+.sort-btn {
+  padding: 0.25rem 0.75rem;
+  border: 2px solid var(--color-surface-alt);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 32px;
+}
+.sort-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+.sort-btn:not(.active):hover { border-color: var(--color-primary); }
+.sort-dir-btn {
+  margin-left: auto;
+  padding: 0.25rem 0.75rem;
+  border: 2px solid var(--color-surface-alt);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 32px;
+  transition: border-color 0.15s;
+}
+.sort-dir-btn:hover { border-color: var(--color-primary); }
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.4);

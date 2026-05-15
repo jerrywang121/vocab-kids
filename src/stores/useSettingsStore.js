@@ -16,6 +16,10 @@ export const useSettingsStore = defineStore('settings', () => {
   const aiBatchSize            = ref(5)          // words per AI batch during bulk import (1–20)
   const userAgeGroup         = ref('6-8')      // '3-5' | '6-8' | '9-11' | '12+'
 
+  // Card list sort preference
+  const cardSortField = ref('createdAt')  // 'name' | 'createdAt' | 'score'
+  const cardSortDir   = ref('desc')     // 'asc' | 'desc'
+
   // TTS (Web Speech API)
   const ttsVoice  = ref('')   // voiceURI of the selected voice ('' = browser default)
   const ttsPitch  = ref(1)    // 0.5 – 2
@@ -39,9 +43,13 @@ export const useSettingsStore = defineStore('settings', () => {
     if (updates.ttsVoice  !== undefined) ttsVoice.value  = updates.ttsVoice
     if (updates.ttsPitch  !== undefined) ttsPitch.value  = Number(updates.ttsPitch)
     if (updates.ttsRate   !== undefined) ttsRate.value   = Number(updates.ttsRate)
+    if (updates.cardSortField !== undefined && ['name','createdAt','score'].includes(updates.cardSortField))
+      cardSortField.value = updates.cardSortField
+    if (updates.cardSortDir !== undefined && ['asc','desc'].includes(updates.cardSortDir))
+      cardSortDir.value = updates.cardSortDir
   }
 
-  return { userName, avatar, colorScheme, theme, questionsPerQuiz, dictionaryApiEnabled, aiApiUrl, aiApiKey, aiProvider, aiModel, aiCallsPerMinute, aiBatchSize, userAgeGroup, ttsVoice, ttsPitch, ttsRate, updateSettings }
+  return { userName, avatar, colorScheme, theme, questionsPerQuiz, dictionaryApiEnabled, aiApiUrl, aiApiKey, aiProvider, aiModel, aiCallsPerMinute, aiBatchSize, userAgeGroup, ttsVoice, ttsPitch, ttsRate, cardSortField, cardSortDir, updateSettings }
 }, {
   persist: {
     key: 'vocab-settings',
