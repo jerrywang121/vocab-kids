@@ -81,6 +81,36 @@ VocabKids is a browser-based flashcard app to help kids learn English vocabulary
 - Import data button → file picker → merges data
 - Clear all data button (with confirmation)
 
+### 4.7 Games (`/games`)
+
+A hub page with three standalone word games. Each game has its own deck-select screen, play loop, and result screen. All games share the same card data; no separate state is persisted.
+
+#### 🪢 Hangman
+- Pick a random word from the selected deck
+- Guess letters one at a time using an on-screen keyboard
+- Max 6 wrong guesses; the gallows is drawn incrementally via SVG
+- Win: all letters revealed before 6 wrong guesses
+- Lose: 6 wrong guesses before the word is complete
+
+#### 🔤 Word Scramble
+- Pick a random card (prefers words ≥ 4 letters)
+- Shuffle the letters (guaranteed different from the original)
+- Player taps letter tiles to place them in order into answer slots
+- Auto-checks when all slots are filled
+- Wrong: shake animation, tiles reset and reshuffled
+- Hint toggle reveals the card definition and example sentence
+- Clear button returns all placed tiles to the pool
+
+#### ⚡ Speed Spell
+- 60-second countdown timer
+- Words presented one at a time with definition + part-of-speech + letter-count dots as clues
+- Player types the word; auto-submits the instant the input matches (no Enter needed)
+- Correct: +3s time bonus, advance to next word
+- Wrong: shake animation, clear input, retry same word
+- Skip: −5s penalty, advance to next word
+- Timer colour-codes green → orange → red; pulses red at ≤ 10s
+- Result screen shows score with emoji rating (🌟 Amazing / 😊 Good job / 💪 Keep practising)
+
 ---
 
 ## 5. Data Architecture
@@ -284,6 +314,7 @@ lingokids-local/
 ├── index.html
 ├── package.json
 ├── vite.config.js
+├── LICENSE
 ├── public/
 │   └── avatars/
 ├── src/
@@ -300,6 +331,7 @@ lingokids-local/
 │   │   ├── ManageView.vue
 │   │   ├── LearnView.vue
 │   │   ├── QuizView.vue
+│   │   ├── GamesView.vue         # Hangman, Word Scramble, Speed Spell
 │   │   ├── AchievementsView.vue
 │   │   └── SettingsView.vue
 │   ├── components/

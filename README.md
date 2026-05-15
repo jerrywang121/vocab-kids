@@ -1,8 +1,11 @@
 # VocabKids 📚
 
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-jerrywang121%2Fvocab--kids-181717?logo=github)](https://github.com/jerrywang121/vocab-kids)
+
 > A browser-based English vocabulary flashcard app for kids — runs entirely offline, no account needed.
 
-VocabKids lets children (and their parents/teachers) build custom word decks, practise with animated flashcards, and test their knowledge with auto-generated quizzes. Everything runs in the browser and persists in `localStorage` — no server, no sign-up.
+VocabKids lets children (and their parents/teachers) build custom word decks, practise with animated flashcards, test their knowledge with auto-generated quizzes, and play word games. Everything runs in the browser and persists in `localStorage` — no server, no sign-up.
 
 ---
 
@@ -14,6 +17,10 @@ VocabKids lets children (and their parents/teachers) build custom word decks, pr
   - Definition Quiz (pick the right meaning)
   - Synonym / Antonym Quiz
   - Fill-the-Gap (complete a real example sentence)
+- **Word games** — three fun games to reinforce vocabulary:
+  - 🪢 **Hangman** — guess the word letter by letter
+  - 🔤 **Word Scramble** — rearrange shuffled letter tiles to spell the word
+  - ⚡ **Speed Spell** — read the definition and type the word before time runs out
 - **AI enrichment** — paste a word list and have 17+ AI providers fill in definitions, synonyms, antonyms, inflected forms, and example sentences
 - **Dictionary API** — free fallback enrichment via [dictionaryapi.dev](https://dictionaryapi.dev/) (no key needed)
 - **Text-to-speech** — hear words and sentences read aloud (Web Speech API)
@@ -36,8 +43,8 @@ VocabKids lets children (and their parents/teachers) build custom word decks, pr
 ### Install & run
 
 ```bash
-git clone https://github.com/your-org/vocabkids-local.git
-cd vocabkids-local
+git clone https://github.com/jerrywang121/vocab-kids.git
+cd vocab-kids
 npm install
 npm run dev
 ```
@@ -62,13 +69,20 @@ lingokids-local/
 ├── src/
 │   ├── main.js           # app entry point
 │   ├── App.vue           # root: theme + dark-mode binding
-│   ├── router/           # Vue Router (hash mode, 6 routes)
+│   ├── router/           # Vue Router (hash mode, 7 routes)
 │   ├── stores/           # Pinia stores (auto-persisted to localStorage)
 │   │   ├── useDecksStore.js
 │   │   ├── useCardsStore.js
 │   │   ├── useProgressStore.js
 │   │   └── useSettingsStore.js
 │   ├── views/            # one component per route
+│   │   ├── HomeView.vue
+│   │   ├── ManageView.vue
+│   │   ├── LearnView.vue
+│   │   ├── QuizView.vue
+│   │   ├── GamesView.vue       ← Hangman, Word Scramble, Speed Spell
+│   │   ├── AchievementsView.vue
+│   │   └── SettingsView.vue
 │   ├── components/       # reusable UI components
 │   ├── composables/
 │   │   ├── useEnrich.js  # dictionary → AI enrichment pipeline
@@ -153,10 +167,11 @@ Import merges by `id`; newer progress entries win on conflict.
 
 | Path | Screen |
 |---|---|
-| `/` | Home — avatar, name, quick links, streak |
+| `/` | Home — avatar, name, quick links |
 | `/manage` | Deck & card management, bulk import |
 | `/learn` | Flashcard learning mode |
 | `/quiz` | Quiz flow + results |
+| `/games` | Word games hub (Hangman, Word Scramble, Speed Spell) |
 | `/achievements` | Progress bars & charts |
 | `/settings` | All user preferences |
 
@@ -179,4 +194,4 @@ Import merges by `id`; newer progress entries win on conflict.
 
 ## 📝 License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.
