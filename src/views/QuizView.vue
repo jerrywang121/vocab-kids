@@ -64,7 +64,7 @@ async function startQuiz(deckId) {
 
   // Try AI generation first, fall back to local generator
   let built = null
-  if (settings.aiApiUrl && settings.aiApiKey) {
+  if (false &&settings.aiApiUrl && settings.aiApiKey) {
     try {
       const { generateQuizWithAI } = await import('../api/ai.js')
       const aiQuestions = await generateQuizWithAI(cards, settings.questionsPerQuiz)

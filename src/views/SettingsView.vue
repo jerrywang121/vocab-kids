@@ -19,7 +19,7 @@ const {
   userName, avatar, colorScheme, theme,
   questionsPerQuiz, dictionaryApiEnabled, userAgeGroup,
   ttsVoice, ttsPitch, ttsRate,
-  aiProvider, aiApiKey, aiApiUrl, aiModel, aiCallsPerMinute,
+  aiProvider, aiApiKey, aiApiUrl, aiModel, aiCallsPerMinute, aiBatchSize,
 } = storeToRefs(settings)
 
 const AGE_GROUPS = [
@@ -433,6 +433,17 @@ function clearAllData() {
               <input type="range" v-model.number="aiCallsPerMinute" min="0" max="60" step="1" />
               <div class="range-labels text-muted"><span>Unlimited (0)</span><span>60/min</span></div>
               <p class="ai-hint text-muted">Limits how many AI API calls the app makes per minute across all features.</p>
+            </div>
+
+            <!-- Batch size -->
+            <div class="form-field">
+              <label>
+                AI Import Batch Size:
+                <strong>{{ aiBatchSize }} word{{ aiBatchSize !== 1 ? 's' : '' }} per batch</strong>
+              </label>
+              <input type="range" v-model.number="aiBatchSize" min="1" max="20" step="1" />
+              <div class="range-labels text-muted"><span>1</span><span>20</span></div>
+              <p class="ai-hint text-muted">How many words are sent to the AI in each request during bulk TXT import. Larger batches are faster but may hit token limits.</p>
             </div>
           </div>
         </div>

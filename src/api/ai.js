@@ -38,9 +38,14 @@ function buildChatBody(provider, model, messages, temperature) {
 function extractContent(provider, data) {
   switch (provider.format) {
     case 'anthropic':
-      return data.content?.[0]?.text ?? ''
     case 'cohere':
-      return data.message?.content?.[0]?.text ?? ''
+    case 'minimax': {
+      // Thinking models prepend a thinking block; find the first text block.
+      const block = Array.isArray(data.content)
+        ? data.content.find(b => b.type === 'text')
+        : null
+      return block?.text ?? ''
+    }
     default:
       return data.choices?.[0]?.message?.content ?? ''
   }

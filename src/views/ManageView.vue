@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useDecksStore }    from '../stores/useDecksStore'
 import { useCardsStore }    from '../stores/useCardsStore'
 import { useProgressStore } from '../stores/useProgressStore'
+import { useSettingsStore } from '../stores/useSettingsStore'
 import { useEnrich }        from '../composables/useEnrich'
 import { convertWordsToCards } from '../api/ai.js'
 import DeckCard       from '../components/DeckCard.vue'
@@ -12,6 +13,7 @@ import CardFormModal  from '../components/CardFormModal.vue'
 const decksStore    = useDecksStore()
 const cardsStore    = useCardsStore()
 const progressStore = useProgressStore()
+const settingsStore = useSettingsStore()
 const { enrich }    = useEnrich()
 
 // ── Deck management ──────────────────────────────────────
@@ -137,7 +139,7 @@ async function handleImport(e) {
 
       importStatus.value = `⏳ Generating cards for ${newWords.length} word${newWords.length !== 1 ? 's' : ''} via AI…`
 
-      const BATCH = 5
+      const BATCH = settingsStore.aiBatchSize
       let added = 0, skipped = 0, errors = 0
       for (let i = 0; i < newWords.length; i += BATCH) {
         const batch = newWords.slice(i, i + BATCH)
@@ -278,7 +280,7 @@ function exportData() {
           <div class="hint-section">
             <strong>TXT</strong> — plain word list, one word / term per line.
             Cards are generated automatically via AI (requires AI configured in Settings).
-            Words are sent in batches of 5 for efficiency.
+            Words are sent in batches of {{ settingsStore.aiBatchSize }} for efficiency (configurable in Settings).
             <pre class="hint-code">abundant
 serendipity
 ephemeral
