@@ -77,6 +77,11 @@ onMounted(() => {
         <div class="mode-name">Quiz</div>
         <div class="mode-desc text-muted">Test yourself with fun questions</div>
       </RouterLink>
+      <RouterLink to="/games" class="mode-card card-surface">
+        <div class="mode-icon">🎮</div>
+        <div class="mode-name">Games</div>
+        <div class="mode-desc text-muted">Play Hangman and more word games</div>
+      </RouterLink>
       <RouterLink to="/achievements" class="mode-card card-surface">
         <div class="mode-icon">🏆</div>
         <div class="mode-name">Achievements</div>

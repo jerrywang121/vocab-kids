@@ -17,6 +17,7 @@ const navLinks = [
   { to: '/manage',       label: 'Manage',       icon: '📖' },
   { to: '/learn',        label: 'Learn',        icon: '🔄' },
   { to: '/quiz',         label: 'Quiz',         icon: '🧠' },
+  { to: '/games',        label: 'Games',        icon: '🎮' },
   { to: '/achievements', label: 'Achievements', icon: '🏆' },
   { to: '/settings',     label: 'Settings',     icon: '⚙️' },
 ]
