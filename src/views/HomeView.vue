@@ -87,7 +87,13 @@ onMounted(() => {
         <div class="mode-name">Achievements</div>
         <div class="mode-desc text-muted">See how far you've come</div>
       </RouterLink>
+      <RouterLink to="/settings" class="mode-card card-surface">
+        <div class="mode-icon">⚙️</div>
+        <div class="mode-name">Settings</div>
+        <div class="mode-desc text-muted">Customise your profile &amp; preferences</div>
+      </RouterLink>
     </div>
+
   </main>
 </template>
 

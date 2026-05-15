@@ -1,4 +1,4 @@
-# VocabKids 📚
+# Vocab Kids 📚
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-jerrywang121%2Fvocab--kids-181717?logo=github)](https://github.com/jerrywang121/vocab-kids)
