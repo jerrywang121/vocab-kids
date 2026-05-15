@@ -36,11 +36,18 @@ const lost = computed(() => wrongCount.value >= MAX_WRONG)
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
-// ── Pick a random word from deck
+// ── Pick a random word from deck (deduplicated by word text)
 function startHangman(deckId) {
   const cards = cardsStore.cardsForDeck(deckId)
   if (!cards.length) return
-  const card = cards[Math.floor(Math.random() * cards.length)]
+  const seen = new Set()
+  const unique = cards.filter(c => {
+    const key = c.word.trim().toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  const card = unique[Math.floor(Math.random() * unique.length)]
   selectedDeckId.value = deckId
   secretWord.value = card.word.trim()
   guessedLetters.value = new Set()
