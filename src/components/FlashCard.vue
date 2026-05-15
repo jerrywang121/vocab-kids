@@ -27,7 +27,7 @@ defineExpose({ reset })
   <!-- Full-info mode: single flat card -->
   <div v-if="mode === 'full'" class="full-card card-surface">
     <div class="word-row">
-      <h2 class="card-word">{{ card.word }}</h2>
+      <a class="card-word" :href="`https://www.google.com/search?q=${encodeURIComponent(card.word + ' definition')}`" target="_blank" rel="noopener" @click.stop>{{ card.word }}</a>
       <button class="btn-speaker" :title="`Pronounce '${card.word}'`" @click.stop="speak(card.word)">🔊</button>
     </div>
     <span v-if="card.partOfSpeech" class="pos-badge">{{ card.partOfSpeech }}</span>
@@ -36,8 +36,16 @@ defineExpose({ reset })
       "{{ card.exampleSentence }}"
     </p>
     <div v-if="card.synonyms?.length || card.antonyms?.length" class="tag-row">
-      <span v-if="card.synonyms?.length" class="tag syn">↑ {{ card.synonyms.slice(0,4).join(', ') }}</span>
-      <span v-if="card.antonyms?.length" class="tag ant">↓ {{ card.antonyms.slice(0,4).join(', ') }}</span>
+      <span v-if="card.synonyms?.length" class="tag syn">↑
+        <template v-for="(w, i) in card.synonyms.slice(0,4)" :key="w">
+          <a :href="`https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`" target="_blank" rel="noopener" class="tag-link" @click.stop>{{ w }}</a><template v-if="i < Math.min(card.synonyms.length, 4) - 1">, </template>
+        </template>
+      </span>
+      <span v-if="card.antonyms?.length" class="tag ant">↓
+        <template v-for="(w, i) in card.antonyms.slice(0,4)" :key="w">
+          <a :href="`https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`" target="_blank" rel="noopener" class="tag-link" @click.stop>{{ w }}</a><template v-if="i < Math.min(card.antonyms.length, 4) - 1">, </template>
+        </template>
+      </span>
     </div>
     <div v-if="card.forms && Object.keys(card.forms).length" class="forms-row">
       <span v-for="(val, key) in card.forms" :key="key" class="form-tag">
@@ -53,7 +61,7 @@ defineExpose({ reset })
       <div class="flip-card-front card-surface front">
         <div class="card-hint text-muted">Tap to reveal ✨</div>
         <div class="word-row">
-          <h2 class="card-word">{{ card.word }}</h2>
+          <a class="card-word" :href="`https://www.google.com/search?q=${encodeURIComponent(card.word + ' definition')}`" target="_blank" rel="noopener" @click.stop>{{ card.word }}</a>
           <button class="btn-speaker" :title="`Pronounce '${card.word}'`" @click.stop="speak(card.word)">🔊</button>
         </div>
         <span v-if="card.partOfSpeech" class="pos-badge">{{ card.partOfSpeech }}</span>
@@ -67,8 +75,16 @@ defineExpose({ reset })
           "{{ card.exampleSentence }}"
         </p>
         <div v-if="card.synonyms?.length || card.antonyms?.length" class="tag-row">
-          <span v-if="card.synonyms?.length" class="tag syn">↑ {{ card.synonyms.slice(0,4).join(', ') }}</span>
-          <span v-if="card.antonyms?.length" class="tag ant">↓ {{ card.antonyms.slice(0,4).join(', ') }}</span>
+          <span v-if="card.synonyms?.length" class="tag syn">↑
+            <template v-for="(w, i) in card.synonyms.slice(0,4)" :key="w">
+              <a :href="`https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`" target="_blank" rel="noopener" class="tag-link" @click.stop>{{ w }}</a><template v-if="i < Math.min(card.synonyms.length, 4) - 1">, </template>
+            </template>
+          </span>
+          <span v-if="card.antonyms?.length" class="tag ant">↓
+            <template v-for="(w, i) in card.antonyms.slice(0,4)" :key="w">
+              <a :href="`https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`" target="_blank" rel="noopener" class="tag-link" @click.stop>{{ w }}</a><template v-if="i < Math.min(card.antonyms.length, 4) - 1">, </template>
+            </template>
+          </span>
         </div>
         <div v-if="card.forms && Object.keys(card.forms).length" class="forms-row">
           <span v-for="(val, key) in card.forms" :key="key" class="form-tag">
@@ -116,7 +132,10 @@ defineExpose({ reset })
   font-family: 'Fredoka One', cursive;
   font-size: 2.2rem;
   color: var(--color-primary);
+  text-decoration: none;
+  cursor: pointer;
 }
+.card-word:hover { text-decoration: underline; }
 .btn-speaker {
   display: flex;
   align-items: center;
@@ -147,6 +166,8 @@ defineExpose({ reset })
 .tag { font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 700; }
 .syn { background: #e8f5e9; color: #2e7d32; }
 .ant { background: #fce4ec; color: #c62828; }
+.tag-link { color: inherit; text-decoration: none; }
+.tag-link:hover { text-decoration: underline; }
 .forms-row { display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; margin-top: 0.15rem; }
 .form-tag {
   font-size: 0.72rem;
