@@ -74,7 +74,7 @@ async function startQuiz(deckId) {
     } catch { /* fall through */ }
   }
 
-  if (!built) built = buildQuiz(cards, deckId, settings.questionsPerQuiz, progressStore.cardScoreDecayed)
+  if (!built) built = buildQuiz(cards, deckId, settings.questionsPerQuiz, progressStore.cardScoreForOrder)
   if (!built) { alert('Not enough cards to build a quiz.'); return }
 
   progressStore.cacheQuizSession(built)
@@ -97,6 +97,7 @@ async function answer(idx) {
     feedbackClass.value = 'animate-correct'
   } else {
     progressStore.recordWrong(currentQ.value.cardId)
+    progressStore.resetLearned(currentQ.value.cardId)
     feedbackClass.value = 'animate-wrong'
   }
 

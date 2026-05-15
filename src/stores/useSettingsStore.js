@@ -43,7 +43,7 @@ export const useSettingsStore = defineStore('settings', () => {
     if (updates.ttsVoice  !== undefined) ttsVoice.value  = updates.ttsVoice
     if (updates.ttsPitch  !== undefined) ttsPitch.value  = Number(updates.ttsPitch)
     if (updates.ttsRate   !== undefined) ttsRate.value   = Number(updates.ttsRate)
-    if (updates.cardSortField !== undefined && ['name','createdAt','score'].includes(updates.cardSortField))
+    if (updates.cardSortField !== undefined && ['name','createdAt','score','isLearned'].includes(updates.cardSortField))
       cardSortField.value = updates.cardSortField
     if (updates.cardSortDir !== undefined && ['asc','desc'].includes(updates.cardSortDir))
       cardSortDir.value = updates.cardSortDir

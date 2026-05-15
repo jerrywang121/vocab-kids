@@ -27,11 +27,8 @@ onMounted(() => {
   decksStore.decks.forEach(deck => {
     const deckCards = cardsStore.cardsForDeck(deck.id)
     if (!deckCards.length) return
-    const learned = deckCards.filter(c => {
-      const p = progressStore.getProgress(c.id)
-      return p && p.correctCount > 0
-    }).length
-    progressStore.appendTodaySnapshot(deck.id, Math.round((learned / deckCards.length) * 100))
+    const scoreSum = deckCards.reduce((acc, c) => acc + (progressStore.cardScore(c.id) ?? 0), 0)
+    progressStore.appendTodaySnapshot(deck.id, Math.round((scoreSum / deckCards.length) * 100))
   })
 })
 </script>

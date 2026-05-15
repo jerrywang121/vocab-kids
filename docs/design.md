@@ -46,8 +46,9 @@ VocabKids is a browser-based flashcard app to help kids learn English vocabulary
 ### 4.3 Learning Mode (`/learn`)
 - User selects a deck
 - Cards shown one at a time; tap/click to flip (word → definition side)
-- Mark card as "Got it" or "Keep practising"
-- Updates `progress.lastReviewedAt`
+- Mark card as "Got it" (sets `isLearned` flag); navigate cards with ← / → arrows
+- Learned cards are skipped during navigation; progress bar shows learned / total
+- `isLearned` flag resets when the quiz marks the card wrong
 
 ### 4.4 Quiz Mode (`/quiz`)
 - User selects a deck and starts a quiz
@@ -61,9 +62,9 @@ VocabKids is a browser-based flashcard app to help kids learn English vocabulary
 - Quiz sessions can be pre-generated (and cached) by AI if configured
 
 ### 4.5 Achievements (`/achievements`)
-- Per-deck progress bar: % of cards with at least one correct answer
+- Per-deck progress bar: average `cardScore` across all cards in the deck (expressed as %)
 - Line chart (vue-chartjs): progress % over time (sampled daily)
-- Overall stats: total cards learned, longest streak, total quizzes taken
+- Overall stats: average score across all cards (%), total cards, total quizzes taken
 
 ### 4.6 Settings (`/settings`)
 - User name and avatar selection
@@ -119,19 +120,19 @@ Uniqueness: `word + definition` pair must be unique per deck.
 | Field | Type |
 |---|---|
 | `cardId` | UUID string |
-| `correctCount` | number (capped at 10) |
-| `wrongCount` | number (capped at 10) |
+| `correctCount` | number (capped at 5) |
+| `wrongCount` | number (capped at 5) |
 | `lastCorrectAt` | ISO8601 \| null |
 | `lastWrongAt` | ISO8601 \| null |
-| `lastReviewedAt` | ISO8601 \| null |
+| `isLearned` | boolean (default `false`) |
 
 **Decay-based scoring** — `useProgressStore` exposes two scoring functions:
-- `cardScore(cardId)` — time-decayed correct ratio; counts decay over 7 days (`COUNT_DECAY_DAYS`)
-- `cardScoreDecayed(cardId)` — same but further multiplied by a review-recency factor (30-day decay)
+- `cardScore(cardId)` — correct ratio; based on correct and wrong counts
+- `cardScoreForOrder(cardId)` — cardScore with time-based decay applied.
 
-These scores drive the weighted card shuffle in quiz generation (lower score = shown more often).
+These cardScoreForOrder values drive the learn order, and weighted card shuffle in quiz generation (lower score = shown more often).
 
-When a count hits the cap of 10 the opposing count is decremented by 1 to prevent permanent masking.
+When a count hits the cap of 5 the opposing count is decremented by 1 to prevent permanent masking.
 
 ### 5.4 Achievement Snapshots
 

@@ -20,20 +20,22 @@ const progressStore = useProgressStore()
 // ── Per-deck stats ────────────────────────────────────
 const deckStats = computed(() =>
   decksStore.decks.map(deck => {
-    const cards   = cardsStore.cardsForDeck(deck.id)
-    const learned = cards.filter(c => {
-      const p = progressStore.getProgress(c.id)
-      return p && p.correctCount > 0
-    }).length
-    const pct = cards.length ? Math.round((learned / cards.length) * 100) : 0
-    return { deck, total: cards.length, learned, pct }
+    const cards = cardsStore.cardsForDeck(deck.id)
+    const scoreSum = cards.reduce((acc, c) => acc + (progressStore.cardScore(c.id) ?? 0), 0)
+    const pct = cards.length ? Math.round((scoreSum / cards.length) * 100) : 0
+    return { deck, total: cards.length, pct }
   })
 )
 
 // ── Overall stats ─────────────────────────────────────
-const totalCards   = computed(() => cardsStore.cards.length)
-const totalLearned = computed(() => progressStore.progress.filter(p => p.correctCount > 0).length)
-const totalQuizzes = computed(() => progressStore.quizSessions.length)
+const totalCards    = computed(() => cardsStore.cards.length)
+const overallScore  = computed(() => {
+  const cards = cardsStore.cards
+  if (!cards.length) return 0
+  const sum = cards.reduce((acc, c) => acc + (progressStore.cardScore(c.id) ?? 0), 0)
+  return Math.round((sum / cards.length) * 100)
+})
+const totalQuizzes  = computed(() => progressStore.quizSessions.length)
 
 // ── Chart: last 30 days across all decks ─────────────
 const chartData = computed(() => {
@@ -87,8 +89,8 @@ const chartOptions = {
     <!-- Overall stats -->
     <div class="stats-row mt-2">
       <div class="stat-chip card-surface text-center">
-        <div class="stat-num">{{ totalLearned }}</div>
-        <div class="stat-label text-muted">Cards Learned</div>
+        <div class="stat-num">{{ overallScore }}%</div>
+        <div class="stat-label text-muted">Avg Score</div>
       </div>
       <div class="stat-chip card-surface text-center">
         <div class="stat-num">{{ totalCards }}</div>
@@ -106,7 +108,7 @@ const chartOptions = {
       <div v-for="ds in deckStats" :key="ds.deck.id" class="deck-progress">
         <div class="deck-progress-header">
           <span class="deck-name">{{ ds.deck.name }}</span>
-          <span class="deck-pct text-muted">{{ ds.learned }} / {{ ds.total }} &nbsp;({{ ds.pct }}%)</span>
+          <span class="deck-pct text-muted">{{ ds.pct }}%</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill" :style="{ width: ds.pct + '%' }" />

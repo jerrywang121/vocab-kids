@@ -65,6 +65,10 @@ const filteredCards = computed(() => {
       cmp = a.word.localeCompare(b.word)
     } else if (field === 'score') {
       cmp = progressStore.cardScore(a.id) - progressStore.cardScore(b.id)
+    } else if (field === 'isLearned') {
+      const aL = progressStore.getProgress(a.id)?.isLearned ? 1 : 0
+      const bL = progressStore.getProgress(b.id)?.isLearned ? 1 : 0
+      cmp = aL - bL
     } else {
       // sort by createdAt
       const aDate = a.createdAt ?? ''
@@ -309,6 +313,11 @@ function exportData() {
           :class="{ active: settingsStore.cardSortField === 'score' }"
           @click="setSortField('score')"
         >Score</button>
+        <button
+          class="sort-btn"
+          :class="{ active: settingsStore.cardSortField === 'isLearned' }"
+          @click="setSortField('isLearned')"
+        >🎓 Learned</button>
         <button class="sort-dir-btn" :title="settingsStore.cardSortDir === 'asc' ? 'Ascending' : 'Descending'" @click="toggleSortDir">
           {{ settingsStore.cardSortDir === 'asc' ? '↑ Asc' : '↓ Desc' }}
         </button>
@@ -378,12 +387,12 @@ abundant,present in large quantities,adjective,plentiful;ample,scarce;rare,The f
             </div>
             <div class="card-progress text-muted">
               <template v-if="progressStore.getProgress(card.id)">
+                <span v-if="progressStore.getProgress(card.id).isLearned" class="learned-badge">🎓 Learned</span>
                 <span>✅ {{ progressStore.getProgress(card.id).correctCount }}</span>
                 <span>❌ {{ progressStore.getProgress(card.id).wrongCount }}</span>
                 <span>🎯 {{ (progressStore.cardScore(card.id) * 100).toFixed(0) }}%</span>
                 <span v-if="progressStore.getProgress(card.id).lastCorrectAt">· correct {{ timeAgo(progressStore.getProgress(card.id).lastCorrectAt) }}</span>
                 <span v-if="progressStore.getProgress(card.id).lastWrongAt">· wrong {{ timeAgo(progressStore.getProgress(card.id).lastWrongAt) }}</span>
-                <span v-if="progressStore.getProgress(card.id).lastReviewedAt">· reviewed {{ timeAgo(progressStore.getProgress(card.id).lastReviewedAt) }}</span>
               </template>
               <template v-else><span>Not studied yet</span></template>
             </div>
@@ -487,6 +496,16 @@ abundant,present in large quantities,adjective,plentiful;ample,scarce;rare,The f
 .card-def { font-size: 0.9rem; }
 .card-example { font-size: 0.85rem; font-style: italic; }
 .card-progress { font-size: 0.78rem; display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.25rem; }
+.learned-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #e8f5e9;
+  color: #2e7d32;
+}
 .tag-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.2rem; }
 .tag {
   font-size: 0.75rem;

@@ -18,38 +18,100 @@ const selectedDeck = computed(() => decksStore.decks.find(d => d.id === selected
 const deckCards    = computed(() => {
   if (!selectedDeckId.value) return []
   return [...cardsStore.cardsForDeck(selectedDeckId.value)]
-    .sort((a, b) => progressStore.cardScore(a.id) - progressStore.cardScore(b.id))
+    .sort((a, b) => progressStore.cardScoreForOrder(a.id) - progressStore.cardScoreForOrder(b.id))
 })
 const currentCard  = computed(() => deckCards.value[currentIndex.value] ?? null)
 const progress     = computed(() => currentCard.value ? progressStore.getProgress(currentCard.value.id) : null)
 const score        = computed(() => currentCard.value ? progressStore.cardScore(currentCard.value.id) : null)
 
+const learnedCount = computed(() =>
+  deckCards.value.filter(c => progressStore.getProgress(c.id)?.isLearned).length
+)
+
+const hasPrevUnlearned = computed(() => {
+  for (let i = currentIndex.value - 1; i >= 0; i--) {
+    if (!progressStore.getProgress(deckCards.value[i].id)?.isLearned) return true
+  }
+  return false
+})
+
+const hasNextUnlearned = computed(() => {
+  for (let i = currentIndex.value + 1; i < deckCards.value.length; i++) {
+    if (!progressStore.getProgress(deckCards.value[i].id)?.isLearned) return true
+  }
+  return false
+})
+
+function isLearned(cardId) {
+  return progressStore.getProgress(cardId)?.isLearned ?? false
+}
+
+function findFirstUnlearnedIndex() {
+  for (let i = 0; i < deckCards.value.length; i++) {
+    if (!isLearned(deckCards.value[i].id)) return i
+  }
+  return -1
+}
+
 function selectDeck(deckId) {
   selectedDeckId.value = deckId
-  currentIndex.value = 0
   sessionDone.value = false
+  const idx = findFirstUnlearnedIndex()
+  if (idx === -1) {
+    sessionDone.value = true
+    currentIndex.value = 0
+  } else {
+    currentIndex.value = idx
+  }
 }
 
 function gotIt() {
-  progressStore.recordReviewed(currentCard.value.id)
-  advance()
-}
-
-function keepPractising() {
-  progressStore.recordReviewed(currentCard.value.id)
-  advance()
-}
-
-function advance() {
+  progressStore.markLearned(currentCard.value.id)
   flashCardRef.value?.reset()
-  if (currentIndex.value < deckCards.value.length - 1) {
-    currentIndex.value++
-  } else {
-    sessionDone.value = true
+  // Advance to next unlearned card after current
+  let found = false
+  for (let i = currentIndex.value + 1; i < deckCards.value.length; i++) {
+    if (!isLearned(deckCards.value[i].id)) {
+      currentIndex.value = i
+      found = true
+      break
+    }
+  }
+  if (!found) {
+    // Wrap to first unlearned before current position
+    for (let i = 0; i < currentIndex.value; i++) {
+      if (!isLearned(deckCards.value[i].id)) {
+        currentIndex.value = i
+        found = true
+        break
+      }
+    }
+  }
+  if (!found) sessionDone.value = true
+}
+
+function navigateNext() {
+  flashCardRef.value?.reset()
+  for (let i = currentIndex.value + 1; i < deckCards.value.length; i++) {
+    if (!isLearned(deckCards.value[i].id)) {
+      currentIndex.value = i
+      return
+    }
+  }
+}
+
+function navigatePrev() {
+  flashCardRef.value?.reset()
+  for (let i = currentIndex.value - 1; i >= 0; i--) {
+    if (!isLearned(deckCards.value[i].id)) {
+      currentIndex.value = i
+      return
+    }
   }
 }
 
 function restart() {
+  progressStore.resetLearnedForDeck(deckCards.value.map(c => c.id))
   currentIndex.value = 0
   sessionDone.value = false
   flashCardRef.value?.reset()
@@ -86,23 +148,24 @@ function restart() {
     <template v-else-if="!sessionDone">
       <div class="session-header mt-1">
         <button class="btn btn-ghost" style="font-size:0.85rem; padding: 0.3rem 0.8rem;" @click="selectedDeckId = null">← Decks</button>
-        <span class="progress-text text-muted">{{ currentIndex + 1 }} / {{ deckCards.length }}</span>
+        <span class="progress-text text-muted">{{ learnedCount }} / {{ deckCards.length }} learned</span>
       </div>
 
       <div class="progress-track mt-1">
-        <div class="progress-fill" :style="{ width: `${((currentIndex) / deckCards.length) * 100}%` }" />
+        <div class="progress-fill" :style="{ width: `${(learnedCount / deckCards.length) * 100}%` }" />
       </div>
 
       <div v-if="currentCard" class="mt-3">
         <FlashCard ref="flashCardRef" :card="currentCard" />
 
-        <div v-if="progress" class="card-stats text-muted mt-1">
+        <div v-if="progress && score !== null" class="card-stats text-muted mt-1">
           ✅ {{ progress.correctCount }} correct &nbsp; ❌ {{ progress.wrongCount }} wrong &nbsp; 🎯 {{ (score * 100).toFixed(0) }}%
         </div>
 
         <div class="action-row mt-2">
-          <button class="btn btn-ghost" style="flex:1" @click="keepPractising">😕 Keep Practising</button>
-          <button class="btn btn-primary" style="flex:1" @click="gotIt">✅ Got It!</button>
+          <button class="btn btn-ghost nav-btn" :disabled="!hasPrevUnlearned" @click="navigatePrev">←</button>
+          <button class="btn btn-primary got-it-btn" @click="gotIt">✅ Got It!</button>
+          <button class="btn btn-ghost nav-btn" :disabled="!hasNextUnlearned" @click="navigateNext">→</button>
         </div>
       </div>
     </template>
@@ -111,11 +174,11 @@ function restart() {
     <template v-else>
       <div class="done-screen text-center card-surface mt-3">
         <div class="done-emoji">🎉</div>
-        <h2>All done!</h2>
-        <p class="text-muted mt-1">You've reviewed all {{ deckCards.length }} cards in <strong>{{ selectedDeck?.name }}</strong>.</p>
+        <h2>All learned!</h2>
+        <p class="text-muted mt-1">You've learned all {{ deckCards.length }} cards in <strong>{{ selectedDeck?.name }}</strong>.</p>
         <div class="flex gap-2 justify-center mt-3" style="flex-wrap:wrap">
           <button class="btn btn-ghost" @click="selectedDeckId = null">Choose Deck</button>
-          <button class="btn btn-primary" @click="restart">🔄 Restart</button>
+          <button class="btn btn-primary" @click="restart">🔄 Start Fresh</button>
           <RouterLink to="/quiz" class="btn btn-secondary">🧠 Take a Quiz</RouterLink>
         </div>
       </div>
@@ -152,7 +215,10 @@ function restart() {
 .session-header { display: flex; align-items: center; justify-content: space-between; }
 .progress-text { font-size: 0.9rem; font-weight: 700; }
 .card-stats { font-size: 0.85rem; text-align: center; }
-.action-row { display: flex; gap: 1rem; }
+.action-row { display: flex; gap: 1rem; align-items: center; }
+.nav-btn { font-size: 1.4rem; min-width: 56px; flex-shrink: 0; }
+.nav-btn:disabled { opacity: 0.3; cursor: default; }
+.got-it-btn { flex: 1; }
 .done-screen { padding: 2.5rem 1.5rem; }
 .done-emoji { font-size: 3.5rem; margin-bottom: 0.5rem; }
 .justify-center { justify-content: center; }

@@ -13,13 +13,13 @@ export const useProgressStore = defineStore('progress', () => {
   function ensureProgress(cardId) {
     let p = getProgress(cardId)
     if (!p) {
-      p = { cardId, correctCount: 0, wrongCount: 0, lastCorrectAt: null, lastWrongAt: null, lastReviewedAt: null }
+      p = { cardId, correctCount: 0, wrongCount: 0, lastCorrectAt: null, lastWrongAt: null, isLearned: false }
       progress.value.push(p)
     }
     return p
   }
 
-  const MAX_COUNT = 10
+  const MAX_COUNT = 5
 
   function recordCorrect(cardId) {
     const p = ensureProgress(cardId)
@@ -41,9 +41,21 @@ export const useProgressStore = defineStore('progress', () => {
     p.lastWrongAt = new Date().toISOString()
   }
 
-  function recordReviewed(cardId) {
+  function markLearned(cardId) {
     const p = ensureProgress(cardId)
-    p.lastReviewedAt = new Date().toISOString()
+    p.isLearned = true
+  }
+
+  function resetLearned(cardId) {
+    const p = getProgress(cardId)
+    if (p) p.isLearned = false
+  }
+
+  function resetLearnedForDeck(cardIds) {
+    for (const id of cardIds) {
+      const p = getProgress(id)
+      if (p) p.isLearned = false
+    }
   }
 
   function cacheQuizSession(session) {
@@ -70,7 +82,6 @@ export const useProgressStore = defineStore('progress', () => {
 
   const COUNT_DECAY_DAYS = 7
   const SCORE_DECAY_DAYS = 30
-  const VIEW_DECAY_DAYS = 3
   
   function daysSince(lastDate) {
     if (!lastDate) return 90
@@ -83,24 +94,22 @@ export const useProgressStore = defineStore('progress', () => {
     return Math.pow(2, - days / decayDays)
   }
 
-  function cardScoreDecayed(cardId) {
+  function cardScoreForOrder(cardId) {
     const p = getProgress(cardId)
     if (!p) return 0.5
+    const total = p.correctCount + p.wrongCount
+    if (total === 0) return 0.5
     const correctDecay = decayFactor(daysSince(p.lastCorrectAt), COUNT_DECAY_DAYS)
-    const wrongDecay   = decayFactor(daysSince(p.lastWrongAt), COUNT_DECAY_DAYS)
-    const lastDate = Math.max(p.lastReviewedAt, p.lastCorrectAt, p.lastWrongAt)
+    const lastDate = Math.max(p.lastCorrectAt, p.lastWrongAt)
     const scoreDecay   = decayFactor(daysSince(lastDate), SCORE_DECAY_DAYS)
-    const total = p.correctCount * correctDecay + p.wrongCount * wrongDecay
-    return total === 0 ? 0.5 : p.correctCount * correctDecay / total * scoreDecay
+    return p.correctCount * correctDecay / (p.wrongCount + MAX_COUNT * correctDecay) * scoreDecay
   }
 
   function cardScore(cardId) {
     const p = getProgress(cardId)
-    if (!p) return 0.5
-    const correctDecay = decayFactor(daysSince(p.lastCorrectAt), COUNT_DECAY_DAYS)
-    const wrongDecay   = decayFactor(daysSince(p.lastWrongAt), COUNT_DECAY_DAYS)
-    const total = p.correctCount * correctDecay + p.wrongCount * wrongDecay
-    return total === 0 ? 0.5 : p.correctCount * correctDecay / total
+    if (!p) return null
+    const total = p.correctCount + p.wrongCount
+    return total === 0 ? null : p.correctCount / (p.wrongCount + MAX_COUNT)
   }
 
   function deleteProgressForCards(cardIds) {
@@ -109,7 +118,8 @@ export const useProgressStore = defineStore('progress', () => {
 
   return {
     progress, quizSessions, achievementSnapshots,
-    getProgress, cardScore, cardScoreDecayed, recordCorrect, recordWrong, recordReviewed,
+    getProgress, cardScore, cardScoreForOrder, recordCorrect, recordWrong,
+    markLearned, resetLearned, resetLearnedForDeck,
     cacheQuizSession, getCachedQuizSession, appendTodaySnapshot, deleteProgressForCards,
   }
 }, {
