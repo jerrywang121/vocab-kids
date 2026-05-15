@@ -13,6 +13,7 @@ const selectedDeckId = ref(null)
 const currentIndex   = ref(0)
 const flashCardRef   = ref(null)
 const sessionDone    = ref(false)
+const cardMode       = ref('flip') // 'flip' | 'full'
 
 const selectedDeck = computed(() => decksStore.decks.find(d => d.id === selectedDeckId.value))
 const deckCards    = computed(() => {
@@ -149,6 +150,20 @@ function restart() {
       <div class="session-header mt-1">
         <button class="btn btn-ghost" style="font-size:0.85rem; padding: 0.3rem 0.8rem;" @click="selectedDeckId = null">← Decks</button>
         <span class="progress-text text-muted">{{ learnedCount }} / {{ deckCards.length }} learned</span>
+        <div class="mode-toggle" role="group" aria-label="Card display mode">
+          <button
+            class="mode-btn"
+            :class="{ active: cardMode === 'flip' }"
+            title="Flip card mode"
+            @click="cardMode = 'flip'; flashCardRef?.reset()"
+          >🃏 Flip</button>
+          <button
+            class="mode-btn"
+            :class="{ active: cardMode === 'full' }"
+            title="Show all info"
+            @click="cardMode = 'full'; flashCardRef?.reset()"
+          >📋 Full</button>
+        </div>
       </div>
 
       <div class="progress-track mt-1">
@@ -156,16 +171,16 @@ function restart() {
       </div>
 
       <div v-if="currentCard" class="mt-3">
-        <FlashCard ref="flashCardRef" :card="currentCard" />
-
-        <div v-if="progress && score !== null" class="card-stats text-muted mt-1">
-          ✅ {{ progress.correctCount }} correct &nbsp; ❌ {{ progress.wrongCount }} wrong &nbsp; 🎯 {{ (score * 100).toFixed(0) }}%
-        </div>
-
-        <div class="action-row mt-2">
+        <div class="nav-row mb-1">
           <button class="btn btn-ghost nav-btn" :disabled="!hasPrevUnlearned" @click="navigatePrev">←</button>
           <button class="btn btn-primary got-it-btn" @click="gotIt">✅ Got It!</button>
           <button class="btn btn-ghost nav-btn" :disabled="!hasNextUnlearned" @click="navigateNext">→</button>
+        </div>
+
+        <FlashCard ref="flashCardRef" :card="currentCard" :mode="cardMode" />
+
+        <div v-if="progress && score !== null" class="card-stats text-muted mt-1">
+          ✅ {{ progress.correctCount }} correct &nbsp; ❌ {{ progress.wrongCount }} wrong &nbsp; 🎯 {{ (score * 100).toFixed(0) }}%
         </div>
       </div>
     </template>
@@ -212,10 +227,32 @@ function restart() {
   background: var(--color-surface-alt);
   color: var(--color-primary);
 }
-.session-header { display: flex; align-items: center; justify-content: space-between; }
+.session-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.mode-toggle {
+  display: flex;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 2px solid var(--color-primary);
+}
+.mode-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  transition: background 0.15s, color 0.15s;
+  min-height: 36px;
+}
+.mode-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+}
 .progress-text { font-size: 0.9rem; font-weight: 700; }
 .card-stats { font-size: 0.85rem; text-align: center; }
-.action-row { display: flex; gap: 1rem; align-items: center; }
+.nav-row { display: flex; gap: 0.75rem; justify-content: space-between; align-items: center; }
+.got-it-btn { flex: 1; }
 .nav-btn { font-size: 1.4rem; min-width: 56px; flex-shrink: 0; }
 .nav-btn:disabled { opacity: 0.3; cursor: default; }
 .got-it-btn { flex: 1; }

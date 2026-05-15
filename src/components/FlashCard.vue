@@ -4,6 +4,7 @@ import { useSpeech } from '../composables/useSpeech'
 
 const props = defineProps({
   card: { type: Object, required: true },
+  mode: { type: String, default: 'flip' }, // 'flip' | 'full'
 })
 const emit = defineEmits(['flip'])
 
@@ -23,7 +24,30 @@ defineExpose({ reset })
 </script>
 
 <template>
-  <div class="flip-card" @click="flip">
+  <!-- Full-info mode: single flat card -->
+  <div v-if="mode === 'full'" class="full-card card-surface">
+    <div class="word-row">
+      <h2 class="card-word">{{ card.word }}</h2>
+      <button class="btn-speaker" :title="`Pronounce '${card.word}'`" @click.stop="speak(card.word)">🔊</button>
+    </div>
+    <span v-if="card.partOfSpeech" class="pos-badge">{{ card.partOfSpeech }}</span>
+    <p class="card-def">{{ card.definition }}</p>
+    <p v-if="card.exampleSentence" class="card-example text-muted">
+      "{{ card.exampleSentence }}"
+    </p>
+    <div v-if="card.synonyms?.length || card.antonyms?.length" class="tag-row">
+      <span v-if="card.synonyms?.length" class="tag syn">↑ {{ card.synonyms.slice(0,4).join(', ') }}</span>
+      <span v-if="card.antonyms?.length" class="tag ant">↓ {{ card.antonyms.slice(0,4).join(', ') }}</span>
+    </div>
+    <div v-if="card.forms && Object.keys(card.forms).length" class="forms-row">
+      <span v-for="(val, key) in card.forms" :key="key" class="form-tag">
+        <span class="form-label">{{ key }}:</span> {{ val }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Flip mode: two-sided card -->
+  <div v-else class="flip-card" @click="flip">
     <div class="flip-card-inner" :class="{ flipped }">
       <!-- Front: word side -->
       <div class="flip-card-front card-surface front">
@@ -57,6 +81,15 @@ defineExpose({ reset })
 </template>
 
 <style scoped>
+.full-card {
+  width: 100%;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
 .flip-card {
   width: 100%;
   height: 290px;
