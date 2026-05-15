@@ -16,6 +16,8 @@ const learnedCards = computed(() =>
   progressStore.progress.filter(p => p.correctCount > 0).length
 )
 
+const BASE_URL = import.meta.env.BASE_URL
+
 const FALLBACK_AVATAR = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%231976d2"/><text x="40" y="52" text-anchor="middle" fill="white" font-size="40">😊</text></svg>`
 
 function onAvatarError(e) { e.target.src = FALLBACK_AVATAR }
@@ -38,7 +40,7 @@ onMounted(() => {
   <main class="page">
     <div class="welcome text-center">
       <img
-        :src="`/avatars/${settings.avatar}`"
+        :src="`${BASE_URL}avatars/${settings.avatar}`"
         :alt="settings.userName"
         class="welcome-avatar"
         @error="onAvatarError"

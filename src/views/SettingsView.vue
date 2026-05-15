@@ -37,6 +37,7 @@ const SCHEMES = [
   { value: 'scheme-orange', label: '🧡 Orange' },
 ]
 
+const BASE_URL = import.meta.env.BASE_URL
 const AVATARS = ['avatar-1.png', 'avatar-2.png', 'avatar-3.png', 'avatar-4.png', 'avatar-5.png']
 
 // ── TTS (Web Speech API) ──────────────────────────────────────────────────────
@@ -230,7 +231,7 @@ function clearAllData() {
             <div class="avatar-picker">
               <label v-for="av in AVATARS" :key="av" class="avatar-option">
                 <input type="radio" v-model="avatar" :value="av" />
-                <img :src="`/avatars/${av}`" :alt="av" class="avatar-img" :class="{ selected: avatar === av }" />
+                <img :src="`${BASE_URL}avatars/${av}`" :alt="av" class="avatar-img" :class="{ selected: avatar === av }" />
               </label>
             </div>
           </div>

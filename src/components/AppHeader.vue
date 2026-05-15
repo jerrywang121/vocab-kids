@@ -8,6 +8,8 @@ const settings = useSettingsStore()
 const { theme, userName, avatar } = storeToRefs(settings)
 const route = useRoute()
 
+const BASE_URL = import.meta.env.BASE_URL
+
 const FALLBACK_AVATAR = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%231976d2"/><text x="20" y="26" text-anchor="middle" fill="white" font-size="20">😊</text></svg>`
 function onAvatarError(e) { e.target.src = FALLBACK_AVATAR }
 
@@ -86,7 +88,7 @@ onUnmounted(() => document.removeEventListener('click', onOutsideClick))
       <RouterLink to="/settings" class="header-user" title="Settings">
         <span class="user-name">{{ userName }}</span>
         <img
-          :src="`/avatars/${avatar}`"
+          :src="`${BASE_URL}avatars/${avatar}`"
           :alt="userName"
           class="avatar"
           @error="onAvatarError"
