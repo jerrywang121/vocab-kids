@@ -14,22 +14,13 @@ const cardsStore    = useCardsStore()
 const progressStore = useProgressStore()
 const { speak }     = useSpeech()
 
-// AI settings bind DIRECTLY to the store — changes persist immediately
-const { aiProvider, aiApiKey, aiApiUrl, aiModel, aiCallsPerMinute } = storeToRefs(settings)
-
-// Local copy for profile/appearance/quiz — committed only on Save
-const form = ref({
-  userName:             settings.userName,
-  avatar:               settings.avatar,
-  colorScheme:          settings.colorScheme,
-  theme:                settings.theme,
-  questionsPerQuiz:     settings.questionsPerQuiz,
-  dictionaryApiEnabled: settings.dictionaryApiEnabled,
-  userAgeGroup:         settings.userAgeGroup,
-  ttsVoice:             settings.ttsVoice,
-  ttsPitch:             settings.ttsPitch,
-  ttsRate:              settings.ttsRate,
-})
+// All settings bind directly to the store — changes persist immediately
+const {
+  userName, avatar, colorScheme, theme,
+  questionsPerQuiz, dictionaryApiEnabled, userAgeGroup,
+  ttsVoice, ttsPitch, ttsRate,
+  aiProvider, aiApiKey, aiApiUrl, aiModel, aiCallsPerMinute,
+} = storeToRefs(settings)
 
 const AGE_GROUPS = [
   { value: '3-5',  label: '🐣 3–5 years old'  },
@@ -46,14 +37,7 @@ const SCHEMES = [
   { value: 'scheme-orange', label: '🧡 Orange' },
 ]
 
-const AVATARS = ['avatar-1.svg', 'avatar-2.svg', 'avatar-3.svg', 'avatar-4.svg', 'avatar-5.svg']
-
-function saveSettings() {
-  settings.updateSettings({ ...form.value })
-  saveMsg.value = '✅ Saved!'
-  setTimeout(() => saveMsg.value = '', 2000)
-}
-const saveMsg = ref('')
+const AVATARS = ['avatar-1.png', 'avatar-2.png', 'avatar-3.png', 'avatar-4.png', 'avatar-5.png']
 
 // ── TTS (Web Speech API) ──────────────────────────────────────────────────────
 const availableVoices = ref([])
@@ -225,253 +209,253 @@ function clearAllData() {
   <main class="page">
     <h1>⚙️ Settings</h1>
 
-    <form class="settings-form mt-2" @submit.prevent="saveSettings">
+    <div class="settings-form mt-2">
 
       <!-- Profile -->
-      <section class="settings-section card-surface">
-        <h2>👤 Profile</h2>
-        <div class="form-field">
-          <label>Your Name</label>
-          <input v-model="form.userName" placeholder="Enter your name" maxlength="30" />
-        </div>
-        <div class="form-field">
-          <label>Age Group</label>
-          <select
-            v-model="form.userAgeGroup"
-            class="provider-select"
-            @change="settings.updateSettings({ userAgeGroup: form.userAgeGroup })"
-          >
-            <option v-for="ag in AGE_GROUPS" :key="ag.value" :value="ag.value">{{ ag.label }}</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label>Avatar</label><div class="avatar-picker">
-            <label v-for="av in AVATARS" :key="av" class="avatar-option">
-              <input type="radio" v-model="form.avatar" :value="av" />
-              <img :src="`/avatars/${av}`" :alt="av" class="avatar-img" :class="{ selected: form.avatar === av }" />
-            </label>
+      <details class="settings-section card-surface" open>
+        <summary class="section-summary">👤 Profile</summary>
+        <div class="section-body">
+          <div class="form-field">
+            <label>Your Name</label>
+            <input v-model="userName" placeholder="Enter your name" maxlength="30" />
+          </div>
+          <div class="form-field">
+            <label>Age Group</label>
+            <select v-model="userAgeGroup" class="provider-select">
+              <option v-for="ag in AGE_GROUPS" :key="ag.value" :value="ag.value">{{ ag.label }}</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Avatar</label>
+            <div class="avatar-picker">
+              <label v-for="av in AVATARS" :key="av" class="avatar-option">
+                <input type="radio" v-model="avatar" :value="av" />
+                <img :src="`/avatars/${av}`" :alt="av" class="avatar-img" :class="{ selected: avatar === av }" />
+              </label>
+            </div>
           </div>
         </div>
-      </section>
+      </details>
 
       <!-- Appearance -->
-      <section class="settings-section card-surface">
-        <h2>🎨 Appearance</h2>
-        <div class="form-field">
-          <label>Colour Scheme</label>
-          <div class="scheme-picker">
-            <label v-for="s in SCHEMES" :key="s.value" class="scheme-option">
-              <input type="radio" v-model="form.colorScheme" :value="s.value" />
-              <span class="scheme-dot" :class="s.value">{{ s.label }}</span>
-            </label>
+      <details class="settings-section card-surface">
+        <summary class="section-summary">🎨 Appearance</summary>
+        <div class="section-body">
+          <div class="form-field">
+            <label>Colour Scheme</label>
+            <div class="scheme-picker">
+              <label v-for="s in SCHEMES" :key="s.value" class="scheme-option">
+                <input type="radio" v-model="colorScheme" :value="s.value" />
+                <span class="scheme-dot" :class="s.value">{{ s.label }}</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Theme</label>
+            <div class="theme-picker">
+              <label class="theme-option">
+                <input type="radio" v-model="theme" value="auto" />
+                <span class="theme-btn">🖥️ Auto</span>
+              </label>
+              <label class="theme-option">
+                <input type="radio" v-model="theme" value="light" />
+                <span class="theme-btn">☀️ Light</span>
+              </label>
+              <label class="theme-option">
+                <input type="radio" v-model="theme" value="dark" />
+                <span class="theme-btn">🌙 Dark</span>
+              </label>
+            </div>
           </div>
         </div>
-        <div class="form-field">
-          <label>Theme</label>
-          <div class="theme-picker">
-            <label class="theme-option">
-              <input type="radio" v-model="form.theme" value="auto" />
-              <span class="theme-btn">🖥️ Auto</span>
-            </label>
-            <label class="theme-option">
-              <input type="radio" v-model="form.theme" value="light" />
-              <span class="theme-btn">☀️ Light</span>
-            </label>
-            <label class="theme-option">
-              <input type="radio" v-model="form.theme" value="dark" />
-              <span class="theme-btn">🌙 Dark</span>
-            </label>
-          </div>
-        </div>
-      </section>
+      </details>
 
       <!-- TTS (Text-to-Speech) -->
-      <section class="settings-section card-surface">
-        <h2>🔊 Pronunciation</h2>
-
-        <div class="form-field">
-          <label>Voice</label>
-          <select v-model="form.ttsVoice" class="provider-select">
-            <option value="">— Browser default —</option>
-            <optgroup v-if="availableVoices.filter(v => v.lang.startsWith('en')).length" label="English voices">
-              <option
-                v-for="v in availableVoices.filter(v2 => v2.lang.startsWith('en'))"
-                :key="v.voiceURI"
-                :value="v.voiceURI"
-              >{{ v.name }} ({{ v.lang }})</option>
-            </optgroup>
-            <optgroup v-if="availableVoices.filter(v => !v.lang.startsWith('en')).length" label="Other voices">
-              <option
-                v-for="v in availableVoices.filter(v2 => !v2.lang.startsWith('en'))"
-                :key="v.voiceURI"
-                :value="v.voiceURI"
-              >{{ v.name }} ({{ v.lang }})</option>
-            </optgroup>
-          </select>
+      <details class="settings-section card-surface">
+        <summary class="section-summary">🔊 Pronunciation</summary>
+        <div class="section-body">
+          <div class="form-field">
+            <label>Voice</label>
+            <select v-model="ttsVoice" class="provider-select">
+              <option value="">— Browser default —</option>
+              <optgroup v-if="availableVoices.filter(v => v.lang.startsWith('en')).length" label="English voices">
+                <option
+                  v-for="v in availableVoices.filter(v2 => v2.lang.startsWith('en'))"
+                  :key="v.voiceURI"
+                  :value="v.voiceURI"
+                >{{ v.name }} ({{ v.lang }})</option>
+              </optgroup>
+              <optgroup v-if="availableVoices.filter(v => !v.lang.startsWith('en')).length" label="Other voices">
+                <option
+                  v-for="v in availableVoices.filter(v2 => !v2.lang.startsWith('en'))"
+                  :key="v.voiceURI"
+                  :value="v.voiceURI"
+                >{{ v.name }} ({{ v.lang }})</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Pitch: <strong>{{ ttsPitch }}</strong></label>
+            <input type="range" v-model.number="ttsPitch" min="0.5" max="2" step="0.1" />
+            <div class="range-labels text-muted"><span>Low (0.5)</span><span>High (2)</span></div>
+          </div>
+          <div class="form-field">
+            <label>Speed: <strong>{{ ttsRate }}×</strong></label>
+            <input type="range" v-model.number="ttsRate" min="0.5" max="2" step="0.1" />
+            <div class="range-labels text-muted"><span>Slow (0.5×)</span><span>Fast (2×)</span></div>
+          </div>
+          <div>
+            <button type="button" class="btn btn-ghost" @click="speak('Hello! I am ready to help you learn.')">
+              🎤 Test Voice
+            </button>
+          </div>
         </div>
-
-        <div class="form-field">
-          <label>Pitch: <strong>{{ form.ttsPitch }}</strong></label>
-          <input type="range" v-model.number="form.ttsPitch" min="0.5" max="2" step="0.1" />
-          <div class="range-labels text-muted"><span>Low (0.5)</span><span>High (2)</span></div>
-        </div>
-
-        <div class="form-field">
-          <label>Speed: <strong>{{ form.ttsRate }}×</strong></label>
-          <input type="range" v-model.number="form.ttsRate" min="0.5" max="2" step="0.1" />
-          <div class="range-labels text-muted"><span>Slow (0.5×)</span><span>Fast (2×)</span></div>
-        </div>
-
-        <div>
-          <button type="button" class="btn btn-ghost" @click="speak('Hello! I am ready to help you learn.')">
-            🎤 Test Voice
-          </button>
-        </div>
-      </section>
+      </details>
 
       <!-- Quiz -->
-      <section class="settings-section card-surface">
-        <h2>🧠 Quiz</h2>
-        <div class="form-field">
-          <label>Questions per Quiz: <strong>{{ form.questionsPerQuiz }}</strong></label>
-          <input type="range" v-model.number="form.questionsPerQuiz" min="5" max="50" step="5" />
-          <div class="range-labels text-muted"><span>5</span><span>50</span></div>
+      <details class="settings-section card-surface">
+        <summary class="section-summary">🧠 Quiz</summary>
+        <div class="section-body">
+          <div class="form-field">
+            <label>Questions per Quiz: <strong>{{ questionsPerQuiz }}</strong></label>
+            <input type="range" v-model.number="questionsPerQuiz" min="5" max="50" step="5" />
+            <div class="range-labels text-muted"><span>5</span><span>50</span></div>
+          </div>
         </div>
-      </section>
+      </details>
 
       <!-- APIs -->
-      <section class="settings-section card-surface">
-        <h2>🌐 APIs</h2>
+      <details class="settings-section card-surface">
+        <summary class="section-summary">🌐 APIs</summary>
+        <div class="section-body">
+          <label class="toggle-label">
+            <input type="checkbox" v-model="dictionaryApiEnabled" />
+            <span>Use Free Dictionary API when adding cards</span>
+          </label>
 
-        <label class="toggle-label">
-          <input type="checkbox" v-model="form.dictionaryApiEnabled" />
-          <span>Use Free Dictionary API when adding cards</span>
-        </label>
+          <div class="ai-provider-box mt-2">
+            <h3 class="ai-section-title">🤖 AI Provider</h3>
 
-        <div class="ai-provider-box mt-2">
-          <h3 class="ai-section-title">🤖 AI Provider</h3>
+            <!-- Provider selector -->
+            <div class="form-field">
+              <label>Provider</label>
+              <select v-model="aiProvider" class="provider-select">
+                <option v-for="p in PROVIDERS" :key="p.id" :value="p.id" :disabled="p.disabled">
+                  {{ p.name }}{{ p.disabled ? ' (not supported in browser)' : '' }}
+                </option>
+              </select>
+            </div>
 
-          <!-- Provider selector -->
-          <div class="form-field">
-            <label>Provider</label>
-            <select v-model="aiProvider" class="provider-select">
-              <option v-for="p in PROVIDERS" :key="p.id" :value="p.id" :disabled="p.disabled">
-                {{ p.name }}{{ p.disabled ? ' (not supported in browser)' : '' }}
-              </option>
-            </select>
-          </div>
+            <!-- Fixed base URL (read-only info) -->
+            <div v-if="currentProvider?.baseUrl && !currentProvider.requiresCustomUrl" class="form-field">
+              <label class="text-muted">Base URL <span class="badge-fixed">fixed</span></label>
+              <input :value="currentProvider.baseUrl" readonly class="input-readonly" />
+            </div>
 
-          <!-- Fixed base URL (read-only info) -->
-          <div v-if="currentProvider?.baseUrl && !currentProvider.requiresCustomUrl" class="form-field">
-            <label class="text-muted">Base URL <span class="badge-fixed">fixed</span></label>
-            <input :value="currentProvider.baseUrl" readonly class="input-readonly" />
-          </div>
+            <!-- Custom / override URL -->
+            <div v-if="currentProvider?.requiresCustomUrl" class="form-field">
+              <label>Base URL</label>
+              <input
+                v-model="aiApiUrl"
+                :placeholder="currentProvider.urlHint || 'https://…'"
+                autocomplete="off"
+              />
+            </div>
 
-          <!-- Custom / override URL -->
-          <div v-if="currentProvider?.requiresCustomUrl" class="form-field">
-            <label>Base URL</label>
-            <input
-              v-model="aiApiUrl"
-              :placeholder="currentProvider.urlHint || 'https://…'"
-              autocomplete="off"
-            />
-          </div>
+            <!-- API Key -->
+            <div class="form-field">
+              <label>API Key</label>
+              <input
+                v-model="aiApiKey"
+                type="password"
+                :placeholder="currentProvider?.keyPlaceholder || 'API key'"
+                autocomplete="off"
+              />
+            </div>
 
-          <!-- API Key -->
-          <div class="form-field">
-            <label>API Key</label>
-            <input
-              v-model="aiApiKey"
-              type="password"
-              :placeholder="currentProvider?.keyPlaceholder || 'API key'"
-              autocomplete="off"
-            />
-          </div>
-
-          <!-- List Models button -->
-          <div class="models-row">
-            <button
-              type="button"
-              class="btn btn-ghost"
-              :disabled="listingModels || currentProvider?.disabled"
-              @click="fetchModels"
-            >
-              <span v-if="listingModels">⏳ Loading…</span>
-              <span v-else>🔍 List Models</span>
-            </button>
-            <span v-if="listModelsMsg" class="models-msg" :class="{ 'msg-error': listModelsMsg.startsWith('❌') || listModelsMsg.startsWith('⚠️') }">
-              {{ listModelsMsg }}
-            </span>
-          </div>
-
-          <!-- Model selector (filterable dropdown when models are loaded) -->
-          <div v-if="availableModels.length > 0" class="form-field">
-            <label>
-              Model
-              <span class="text-muted" style="font-size:0.8rem;">
-                ({{ filteredModels.length }}/{{ availableModels.length }})
+            <!-- List Models button -->
+            <div class="models-row">
+              <button
+                type="button"
+                class="btn btn-ghost"
+                :disabled="listingModels || currentProvider?.disabled"
+                @click="fetchModels"
+              >
+                <span v-if="listingModels">⏳ Loading…</span>
+                <span v-else>🔍 List Models</span>
+              </button>
+              <span v-if="listModelsMsg" class="models-msg" :class="{ 'msg-error': listModelsMsg.startsWith('❌') || listModelsMsg.startsWith('⚠️') }">
+                {{ listModelsMsg }}
               </span>
-            </label>
-            <input
-              v-model="modelFilter"
-              class="model-filter-input"
-              placeholder="🔎 Filter models…"
-              autocomplete="off"
-            />
-            <select v-model="aiModel" class="model-select" size="5">
-              <option value="">— select a model —</option>
-              <option v-for="m in filteredModels" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
-          </div>
+            </div>
 
-          <!-- Model text input (when no models loaded yet) -->
-          <div v-else class="form-field">
-            <label>Model <span class="text-muted">(or click List Models above)</span></label>
-            <input
-              v-model="aiModel"
-              :placeholder="currentProvider?.defaultModel || 'model-name'"
-              autocomplete="off"
-            />
-          </div>
+            <!-- Model selector (filterable dropdown when models are loaded) -->
+            <div v-if="availableModels.length > 0" class="form-field">
+              <label>
+                Model
+                <span class="text-muted" style="font-size:0.8rem;">
+                  ({{ filteredModels.length }}/{{ availableModels.length }})
+                </span>
+              </label>
+              <input
+                v-model="modelFilter"
+                class="model-filter-input"
+                placeholder="🔎 Filter models…"
+                autocomplete="off"
+              />
+              <select v-model="aiModel" class="model-select" size="5">
+                <option value="">— select a model —</option>
+                <option v-for="m in filteredModels" :key="m.id" :value="m.id">{{ m.name }}</option>
+              </select>
+            </div>
 
-          <p v-if="currentProvider?.disabled" class="ai-notice">
-            ⚠️ {{ currentProvider.keyPlaceholder }}
-          </p>
+            <!-- Model text input (when no models loaded yet) -->
+            <div v-else class="form-field">
+              <label>Model <span class="text-muted">(or click List Models above)</span></label>
+              <input
+                v-model="aiModel"
+                :placeholder="currentProvider?.defaultModel || 'model-name'"
+                autocomplete="off"
+              />
+            </div>
 
-          <!-- Rate limit -->
-          <div class="form-field">
-            <label>
-              AI Call Rate Limit:
-              <strong>{{ aiCallsPerMinute > 0 ? `${aiCallsPerMinute} calls/min` : 'Unlimited' }}</strong>
-            </label>
-            <input type="range" v-model.number="aiCallsPerMinute" min="0" max="60" step="1" />
-            <div class="range-labels text-muted"><span>Unlimited (0)</span><span>60/min</span></div>
-            <p class="ai-hint text-muted">Limits how many AI API calls the app makes per minute across all features.</p>
+            <p v-if="currentProvider?.disabled" class="ai-notice">
+              ⚠️ {{ currentProvider.keyPlaceholder }}
+            </p>
+
+            <!-- Rate limit -->
+            <div class="form-field">
+              <label>
+                AI Call Rate Limit:
+                <strong>{{ aiCallsPerMinute > 0 ? `${aiCallsPerMinute} calls/min` : 'Unlimited' }}</strong>
+              </label>
+              <input type="range" v-model.number="aiCallsPerMinute" min="0" max="60" step="1" />
+              <div class="range-labels text-muted"><span>Unlimited (0)</span><span>60/min</span></div>
+              <p class="ai-hint text-muted">Limits how many AI API calls the app makes per minute across all features.</p>
+            </div>
           </div>
         </div>
-      </section>
+      </details>
 
-      <div class="save-row">
-        <button type="submit" class="btn btn-primary">Save Settings</button>
-        <span v-if="saveMsg" class="save-msg">{{ saveMsg }}</span>
-      </div>
-    </form>
+    </div>
 
     <!-- Data management -->
-    <section class="settings-section card-surface mt-3">
-      <h2>💾 Data</h2>
-      <p class="text-muted" style="font-size:0.9rem;">
-        {{ decksStore.decks.length }} decks · {{ cardsStore.cards.length }} cards
-      </p>
-      <div class="data-actions mt-2">
-        <button class="btn btn-ghost" @click="exportData">📤 Export Backup</button>
-        <button class="btn btn-ghost" @click="triggerImport">
-          <span v-if="importMsg">{{ importMsg }}</span><span v-else>📥 Import Backup</span>
-        </button>
-        <button class="btn btn-danger" @click="showClearConfirm = true">🗑️ Clear All Data</button>
+    <details class="settings-section card-surface mt-3">
+      <summary class="section-summary">💾 Data</summary>
+      <div class="section-body">
+        <p class="text-muted" style="font-size:0.9rem;">
+          {{ decksStore.decks.length }} decks · {{ cardsStore.cards.length }} cards
+        </p>
+        <div class="data-actions mt-2">
+          <button class="btn btn-ghost" @click="exportData">📤 Export Backup</button>
+          <button class="btn btn-ghost" @click="triggerImport">
+            <span v-if="importMsg">{{ importMsg }}</span><span v-else>📥 Import Backup</span>
+          </button>
+          <button class="btn btn-danger" @click="showClearConfirm = true">🗑️ Clear All Data</button>
+        </div>
+        <input ref="importFileInput" type="file" accept=".json" class="hidden" @change="handleImport" />
       </div>
-      <input ref="importFileInput" type="file" accept=".json" class="hidden" @change="handleImport" />
-    </section>
+    </details>
 
     <!-- Clear confirm dialog -->
     <div v-if="showClearConfirm" class="modal-backdrop" @click.self="showClearConfirm = false">
@@ -489,8 +473,32 @@ function clearAllData() {
 
 <style scoped>
 .settings-form { display: flex; flex-direction: column; gap: 1rem; }
-.settings-section { display: flex; flex-direction: column; gap: 0.9rem; }
-.settings-section h2 { font-size: 1.1rem; }
+.settings-section { overflow: hidden; }
+.settings-section summary.section-summary {
+  padding: 0.85rem 1.25rem;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 800;
+  list-style: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.settings-section summary.section-summary::-webkit-details-marker { display: none; }
+.settings-section summary.section-summary::after {
+  content: '›';
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  transition: transform 0.2s;
+}
+.settings-section[open] summary.section-summary::after { transform: rotate(90deg); }
+.settings-section[open] summary.section-summary {
+  border-bottom: 1.5px solid var(--color-surface-alt);
+}
+.section-body { display: flex; flex-direction: column; gap: 0.9rem; padding: 1rem 1.25rem; }
 .avatar-picker { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .avatar-option { cursor: pointer; }
 .avatar-option input { display: none; }
@@ -545,8 +553,6 @@ function clearAllData() {
   font-weight: 600;
 }
 .toggle-label input { width: 18px; height: 18px; cursor: pointer; }
-.save-row { display: flex; align-items: center; gap: 1rem; }
-.save-msg { font-weight: 700; color: var(--color-primary); }
 .data-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .hidden { display: none; }
 .modal-backdrop {
