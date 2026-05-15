@@ -6,7 +6,9 @@ import { useCardsStore } from '../stores/useCardsStore'
 const decksStore = useDecksStore()
 const cardsStore = useCardsStore()
 
-// ── State machine: 'hub' | 'hangman-select' | 'hangman-play' | 'hangman-result'
+// ── State machine:
+//    'hub' | 'hangman-select' | 'hangman-play' | 'hangman-result'
+//    | 'scramble-select' | 'scramble-play' | 'scramble-result'
 const phase = ref('hub')
 const selectedDeckId = ref(null)
 const secretWord = ref('')
@@ -83,6 +85,121 @@ const hangmanParts = computed(() => {
   if (n >= 6) parts.push('right-leg')
   return parts
 })
+
+// ════════════════════════════════════════════════════════════════
+// WORD SCRAMBLE
+// ════════════════════════════════════════════════════════════════
+
+const scrambleCard    = ref(null)
+const scrambleTiles   = ref([])   // remaining tiles in the pool
+const placedTiles     = ref([])   // tiles the player has placed
+const scrambleHint    = ref(false)
+const scrambleWrong   = ref(false) // triggers shake animation
+const scrambleCorrect = ref(false) // game won
+
+function shuffleArray(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+function uniqueWordsForDeck(deckId) {
+  const cards = cardsStore.cardsForDeck(deckId)
+  const seen  = new Set()
+  return cards.filter(c => {
+    const key = c.word.trim().toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function startScramble(deckId) {
+  const unique  = uniqueWordsForDeck(deckId)
+  if (!unique.length) return
+
+  // Prefer words ≥ 4 letters for a reasonable challenge
+  const usable  = unique.filter(c => c.word.trim().length >= 4)
+  const pool    = usable.length ? usable : unique
+  const card    = pool[Math.floor(Math.random() * pool.length)]
+
+  const letters = card.word.trim().toUpperCase().split('')
+  let tiles     = letters.map((letter, i) => ({ id: i, letter }))
+
+  // Ensure the shuffle isn't the same as the original
+  let shuffled
+  do { shuffled = shuffleArray(tiles) }
+  while (
+    shuffled.map(t => t.letter).join('') === letters.join('') &&
+    letters.length > 1
+  )
+
+  scrambleCard.value    = card
+  scrambleTiles.value   = shuffled
+  placedTiles.value     = []
+  scrambleHint.value    = false
+  scrambleWrong.value   = false
+  scrambleCorrect.value = false
+  selectedDeckId.value  = deckId
+  phase.value           = 'scramble-play'
+}
+
+function placeTile(tile) {
+  if (scrambleCorrect.value || scrambleWrong.value) return
+  scrambleTiles.value = scrambleTiles.value.filter(t => t.id !== tile.id)
+  placedTiles.value   = [...placedTiles.value, tile]
+
+  // Auto-check when all tiles have been placed
+  if (placedTiles.value.length === scrambleCard.value.word.trim().length) {
+    checkAnswer()
+  }
+}
+
+function removeTile(tile) {
+  if (scrambleCorrect.value || scrambleWrong.value) return
+  placedTiles.value   = placedTiles.value.filter(t => t.id !== tile.id)
+  scrambleTiles.value = [...scrambleTiles.value, tile]
+}
+
+function checkAnswer() {
+  const answer = placedTiles.value.map(t => t.letter).join('')
+  const target = scrambleCard.value.word.trim().toUpperCase()
+
+  if (answer === target) {
+    scrambleCorrect.value = true
+    phase.value = 'scramble-result'
+  } else {
+    scrambleWrong.value = true
+    setTimeout(() => {
+      // Return all placed tiles to the pool and re-shuffle
+      scrambleTiles.value = shuffleArray([...scrambleTiles.value, ...placedTiles.value])
+      placedTiles.value   = []
+      scrambleWrong.value = false
+    }, 600)
+  }
+}
+
+function clearPlaced() {
+  if (scrambleCorrect.value || scrambleWrong.value) return
+  scrambleTiles.value = shuffleArray([...scrambleTiles.value, ...placedTiles.value])
+  placedTiles.value   = []
+}
+
+function playScrambleAgain() {
+  startScramble(selectedDeckId.value)
+}
+
+const scrambleDeck = computed(() => decksStore.decks.find(d => d.id === selectedDeckId.value))
+
+// Number of empty answer slots still to fill
+const emptySlots = computed(() =>
+  scrambleCard.value
+    ? scrambleCard.value.word.trim().length - placedTiles.value.length
+    : 0
+)
 </script>
 
 <template>
@@ -104,15 +221,15 @@ const hangmanParts = computed(() => {
           <span class="game-arrow">›</span>
         </button>
 
-        <!-- Placeholder for future games -->
-        <div class="game-card card-surface game-coming-soon">
+        <!-- Word Scramble card -->
+        <button class="game-card card-surface" @click="phase = 'scramble-select'">
           <div class="game-icon">🔤</div>
           <div class="game-info">
             <h2 class="game-title">Word Scramble</h2>
-            <p class="game-desc text-muted">Coming soon…</p>
+            <p class="game-desc text-muted">Rearrange the letters to spell the word!</p>
           </div>
-          <span class="game-badge">Soon</span>
-        </div>
+          <span class="game-arrow">›</span>
+        </button>
 
         <div class="game-card card-surface game-coming-soon">
           <div class="game-icon">⚡</div>
@@ -269,6 +386,116 @@ const hangmanParts = computed(() => {
         <div class="flex gap-2 mt-3" style="flex-wrap:wrap;justify-content:center">
           <button class="btn btn-primary" @click="playAgain">🔄 Play Again</button>
           <button class="btn btn-ghost" @click="phase = 'hangman-select'">Change Deck</button>
+          <button class="btn btn-ghost" @click="goHub">🎮 All Games</button>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═══════════════ SCRAMBLE – DECK SELECT ═══════════════ -->
+    <template v-else-if="phase === 'scramble-select'">
+      <div class="back-row">
+        <button class="btn btn-ghost" @click="goHub">← Back</button>
+      </div>
+      <h1>🔤 Word Scramble</h1>
+      <p class="text-muted mt-1">Choose a deck to play with:</p>
+
+      <p v-if="!decksStore.decks.length" class="text-muted mt-2">
+        No decks yet — <RouterLink to="/manage">create one first</RouterLink>.
+      </p>
+
+      <div class="deck-list mt-2">
+        <button
+          v-for="deck in decksStore.decks"
+          :key="deck.id"
+          class="deck-btn card-surface"
+          :disabled="!cardsStore.cardsForDeck(deck.id).length"
+          @click="startScramble(deck.id)"
+        >
+          <span class="deck-name">{{ deck.name }}</span>
+          <span class="deck-count text-muted">
+            {{ cardsStore.cardsForDeck(deck.id).length }} cards
+            <span v-if="!cardsStore.cardsForDeck(deck.id).length">&nbsp;(empty)</span>
+          </span>
+        </button>
+      </div>
+    </template>
+
+    <!-- ═══════════════ SCRAMBLE – PLAY / RESULT ═══════════════ -->
+    <template v-else-if="phase === 'scramble-play' || phase === 'scramble-result'">
+      <div class="back-row">
+        <button class="btn btn-ghost" @click="phase = 'scramble-select'">← Decks</button>
+        <span class="deck-tag text-muted">{{ scrambleDeck?.name }}</span>
+      </div>
+
+      <h1>🔤 Word Scramble</h1>
+
+      <!-- Hint toggle -->
+      <div class="hint-row mt-2">
+        <button class="btn btn-ghost hint-btn" @click="scrambleHint = !scrambleHint">
+          {{ scrambleHint ? '🙈 Hide hint' : '💡 Show hint' }}
+        </button>
+      </div>
+      <div v-if="scrambleHint" class="hint-box card-surface mt-1">
+        <p class="hint-def">{{ scrambleCard?.definition }}</p>
+        <p v-if="scrambleCard?.exampleSentence" class="hint-example text-muted">
+          "{{ scrambleCard.exampleSentence }}"
+        </p>
+      </div>
+
+      <!-- Answer area -->
+      <div class="answer-area mt-3">
+        <div
+          class="tile-row answer-row"
+          :class="{ 'animate-wrong': scrambleWrong, 'animate-correct-row': scrambleCorrect }"
+        >
+          <!-- Filled tiles -->
+          <button
+            v-for="tile in placedTiles"
+            :key="tile.id"
+            class="tile tile-placed"
+            :disabled="scrambleCorrect || scrambleWrong"
+            @click="removeTile(tile)"
+          >{{ tile.letter }}</button>
+          <!-- Empty slots -->
+          <span
+            v-for="n in emptySlots"
+            :key="'empty-' + n"
+            class="tile-slot"
+          ></span>
+        </div>
+      </div>
+
+      <!-- Scramble pool -->
+      <div class="tile-row pool-row mt-3">
+        <button
+          v-for="tile in scrambleTiles"
+          :key="tile.id"
+          class="tile tile-pool"
+          :disabled="scrambleCorrect || scrambleWrong"
+          @click="placeTile(tile)"
+        >{{ tile.letter }}</button>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
+        <button
+          class="btn btn-ghost"
+          :disabled="!placedTiles.length || scrambleCorrect || scrambleWrong"
+          @click="clearPlaced"
+        >↩ Clear</button>
+      </div>
+
+      <!-- Result overlay -->
+      <div v-if="phase === 'scramble-result'" class="result-banner card-surface mt-3 text-center">
+        <div class="result-emoji">🎉</div>
+        <h2 class="result-title">Brilliant!</h2>
+        <p class="result-word">{{ scrambleCard?.word }}</p>
+        <p v-if="scrambleCard?.definition" class="text-muted mt-1" style="font-size:0.9rem">
+          {{ scrambleCard.definition }}
+        </p>
+        <div class="flex gap-2 mt-3" style="flex-wrap:wrap;justify-content:center">
+          <button class="btn btn-primary" @click="playScrambleAgain">🔄 New Word</button>
+          <button class="btn btn-ghost" @click="phase = 'scramble-select'">Change Deck</button>
           <button class="btn btn-ghost" @click="goHub">🎮 All Games</button>
         </div>
       </div>
@@ -468,10 +695,103 @@ const hangmanParts = computed(() => {
   .gallows-wrap { flex-direction: row; align-items: center; gap: 1rem; }
   .gallows-svg { width: 100px; height: 110px; }
 }
+
+/* ── Word Scramble ───────────────────────── */
+.hint-row { display: flex; }
+.hint-btn { font-size: 0.9rem; min-height: 36px; padding: 0.3rem 0.85rem; }
+.hint-box {
+  padding: 0.85rem 1rem;
+  border-left: 4px solid var(--color-primary);
+}
+.hint-def { font-weight: 700; font-size: 0.95rem; }
+.hint-example { font-size: 0.85rem; margin-top: 0.35rem; font-style: italic; }
+
+.answer-area { min-height: 3.8rem; }
+
+.tile-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.answer-row {
+  min-height: 3.4rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 3px solid var(--color-primary);
+}
+
+.pool-row {
+  min-height: 3.4rem;
+}
+
+.tile {
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 0.6rem;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+  text-transform: uppercase;
+  user-select: none;
+}
+.tile:active { transform: scale(0.92); }
+.tile:disabled { cursor: default; }
+
+.tile-pool {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+.tile-pool:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.tile-placed {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 2px solid var(--color-primary);
+  animation: tile-drop-in 0.2s ease-out;
+}
+.tile-placed:hover:not(:disabled) {
+  background: #ffebee;
+  border-color: #d32f2f;
+  color: #b71c1c;
+}
+
+.tile-slot {
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 0.6rem;
+  border: 2px dashed var(--color-surface-alt);
+  display: inline-flex;
+}
+
+@keyframes tile-drop-in {
+  from { transform: scale(0.6) translateY(-8px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.animate-correct-row .tile-placed {
+  background: #e8f5e9;
+  border-color: #388e3c;
+  color: #1b5e20;
+}
+
 </style>
 
 <style>
 /* Dark-mode key overrides (global to beat scoped specificity) */
 body.dark .key-btn.key-correct { background: #1b3a1d !important; color: #a5d6a7 !important; border-color: #2e7d32 !important; }
 body.dark .key-btn.key-wrong   { background: #3a1a1a !important; color: #ef9a9a !important; border-color: #c62828 !important; }
+/* Scramble dark mode */
+body.dark .tile-placed { background: #2a2f3d; color: var(--color-text); }
+body.dark .tile-placed:hover:not(:disabled) { background: #3a1a1a; border-color: #c62828; color: #ef9a9a; }
+body.dark .animate-correct-row .tile-placed { background: #1b3a1d !important; border-color: #2e7d32 !important; color: #a5d6a7 !important; }
 </style>
