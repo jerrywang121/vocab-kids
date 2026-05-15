@@ -4,8 +4,8 @@ import { useDecksStore }    from '../stores/useDecksStore'
 import { useCardsStore }    from '../stores/useCardsStore'
 import { useProgressStore } from '../stores/useProgressStore'
 import { useSettingsStore } from '../stores/useSettingsStore'
-import { useEnrich }        from '../composables/useEnrich'
-import { convertWordsToCards } from '../api/ai.js'
+import { convertWordsToCards, enrichWithAI } from '../api/ai.js'
+import { lookupWordCards } from '../api/dictionary.js'
 import DeckCard       from '../components/DeckCard.vue'
 import DeckFormModal  from '../components/DeckFormModal.vue'
 import CardFormModal  from '../components/CardFormModal.vue'
@@ -14,7 +14,6 @@ const decksStore    = useDecksStore()
 const cardsStore    = useCardsStore()
 const progressStore = useProgressStore()
 const settingsStore = useSettingsStore()
-const { enrich }    = useEnrich()
 
 // ── Deck management ──────────────────────────────────────
 const activeDeck       = ref(null)
@@ -88,12 +87,10 @@ function openEditCard(card)  { editingCard.value = card; showCardForm.value = tr
 async function saveCard(formData) {
   cardLoading.value = true
   try {
-    const enriched = await enrich(formData.word, formData)
-    const merged = { ...formData, ...enriched }
     if (editingCard.value) {
-      cardsStore.updateCard(editingCard.value.id, merged)
+      cardsStore.updateCard(editingCard.value.id, formData)
     } else {
-      const added = cardsStore.addCard({ ...merged, deckId: activeDeck.value.id })
+      const added = cardsStore.addCard({ ...formData, deckId: activeDeck.value.id })
       if (!added) {
         alert(`"${formData.word}" with this definition already exists in this deck.`)
         return
@@ -164,19 +161,53 @@ async function handleImport(e) {
 
       const BATCH = settingsStore.aiBatchSize
       let added = 0, skipped = 0, errors = 0
+      let userApprovedDictionaryFallback = null  // null = not asked yet
       for (let i = 0; i < newWords.length; i += BATCH) {
         const batch = newWords.slice(i, i + BATCH)
         importStatus.value = `⏳ Processing words ${i + 1}–${Math.min(i + BATCH, newWords.length)} of ${newWords.length}…`
+
+        let aiCards = null
+        let aiFailed = false
         try {
-          const cards = await convertWordsToCards(batch)
-          if (!cards) { errors += batch.length; continue }
-          for (const card of cards) {
+          aiCards = await convertWordsToCards(batch)
+          if (!aiCards) aiFailed = true
+        } catch {
+          aiFailed = true
+        }
+
+        if (!aiFailed && aiCards) {
+          for (const card of aiCards) {
             const result = cardsStore.addCard({ ...card, deckId: activeDeck.value.id })
             result ? added++ : skipped++
           }
-        } catch (err) {
-          importStatus.value = `❌ AI error: ${err.message}`
-          return
+        } else {
+          // Ask the user once whether to fall back to the dictionary API
+          if (userApprovedDictionaryFallback === null) {
+            userApprovedDictionaryFallback = window.confirm(
+              'AI is unavailable for this import.\n\n' +
+              'Fall back to the dictionary API and look up each word individually?\n\n' +
+              '(This may take longer and will create one card per definition found.)'
+            )
+          }
+          if (!userApprovedDictionaryFallback) {
+            importStatus.value = added
+              ? `⚠️ Import stopped. ${added} card${added !== 1 ? 's' : ''} imported before AI failed.`
+              : '⚠️ Import cancelled — AI unavailable.'
+            return
+          }
+          // Fall back to dictionary API, one word at a time
+          for (const word of batch) {
+            importStatus.value = `⏳ Looking up "${word}" in dictionary…`
+            const { data: dictCards } = await lookupWordCards(word)
+            if (dictCards?.length) {
+              for (const card of dictCards) {
+                const result = cardsStore.addCard({ ...card, deckId: activeDeck.value.id })
+                result ? added++ : skipped++
+              }
+            } else {
+              errors++
+            }
+          }
         }
       }
 
@@ -206,7 +237,7 @@ async function handleImport(e) {
         exampleSentence: row.examplesentence ?? row.exampleSentence ?? '',
         deckId: activeDeck.value.id,
       }
-      const enriched = await enrich(word, base)
+      const enriched = await enrichWithAI(word, base)
       const result = cardsStore.addCard({ ...base, ...enriched })
       result ? added++ : skipped++
     }

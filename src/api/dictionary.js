@@ -32,60 +32,52 @@ export async function lookupWordRaw(word) {
 }
 
 /**
- * Fetch dictionary data for a word.
- * Returns a partial card object with whichever fields were found.
- * Never throws — resolves with an empty object on any error.
+ * Parse raw API entries into a flat list of card-shaped objects — one per definition.
+ * Synonyms and antonyms are merged from both the meaning-level and definition-level arrays.
+ *
+ * @param {Array} entries  Raw array returned by the dictionary API
+ * @returns {Array<object>} Partial card objects matching the FlashCard schema
  */
-export async function lookupWord(word) {
-  const url = `${BASE}/${encodeURIComponent(word.trim())}`
-  console.debug(`${TAG} lookupWord →`, url)
-  try {
-    const res = await fetch(url)
-    console.debug(`${TAG} lookupWord ← status`, res.status)
-    if (!res.ok) {
-      console.warn(`${TAG} lookupWord non-OK response`, res.status)
-      return {}
-    }
-    const data = await res.json()
-    if (!Array.isArray(data) || !data.length) {
-      console.warn(`${TAG} lookupWord unexpected shape`, data)
-      return {}
-    }
+export function parseEntriesToCards(entries) {
+  const cards = []
+  for (const entry of entries) {
+    const word = entry.word ?? ''
+    for (const meaning of entry.meanings ?? []) {
+      const partOfSpeech = meaning.partOfSpeech ?? ''
 
-    const entry = data[0]
-    const result = {}
+      // Synonyms / antonyms declared at the meaning level apply to all definitions in it
+      const meaningSynonyms = meaning.synonyms ?? []
+      const meaningAntonyms = meaning.antonyms ?? []
 
-    // Collect meanings by part-of-speech
-    const meanings = entry.meanings ?? []
-    if (meanings.length) {
-      const first = meanings[0]
-      result.partOfSpeech = first.partOfSpeech ?? ''
+      for (const def of meaning.definitions ?? []) {
+        const synonyms = [...new Set([...meaningSynonyms, ...(def.synonyms ?? [])])].slice(0, 8)
+        const antonyms = [...new Set([...meaningAntonyms, ...(def.antonyms ?? [])])].slice(0, 8)
 
-      const def = first.definitions?.[0]
-      if (def) {
-        result.definition = def.definition ?? ''
-        if (def.example) result.exampleSentence = def.example
-      }
-
-      // Gather synonyms / antonyms across all meanings
-      const synonyms = new Set()
-      const antonyms = new Set()
-      for (const m of meanings) {
-        m.synonyms?.forEach(s => synonyms.add(s))
-        m.antonyms?.forEach(a => antonyms.add(a))
-        for (const d of m.definitions ?? []) {
-          d.synonyms?.forEach(s => synonyms.add(s))
-          d.antonyms?.forEach(a => antonyms.add(a))
+        const card = {
+          word,
+          partOfSpeech,
+          definition: def.definition ?? '',
+          synonyms,
+          antonyms,
         }
-      }
-      if (synonyms.size) result.synonyms = [...synonyms].slice(0, 8)
-      if (antonyms.size) result.antonyms = [...antonyms].slice(0, 8)
-    }
+        if (def.example) card.exampleSentence = def.example
 
-    console.debug(`${TAG} lookupWord result`, result)
-    return result
-  } catch (err) {
-    console.error(`${TAG} lookupWord error`, err)
-    return {}
+        cards.push(card)
+      }
+    }
   }
+  return cards
 }
+
+/**
+ * Fetch all dictionary definitions for a word as a list of partial card objects.
+ * Returns { data: CardDetail[], error } — data is null on failure.
+ */
+export async function lookupWordCards(word) {
+  const { data, error } = await lookupWordRaw(word)
+  if (error) return { data: null, error }
+  const cards = parseEntriesToCards(data)
+  console.debug(`${TAG} lookupWordCards parsed ${cards.length} card(s)`, cards)
+  return { data: cards, error: null }
+}
+
