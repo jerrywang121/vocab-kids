@@ -7,6 +7,10 @@
 
 VocabKids lets children (and their parents/teachers) build custom word decks, practise with animated flashcards, test their knowledge with auto-generated quizzes, and play word games. Everything runs in the browser and persists in `localStorage` — no server, no sign-up.
 
+*blah blah blah ... OK, it is for my son, who is doing 11+, having 1000+ words on his list that he seems never want to look at. Built this to help him "gaming" on it... hope it works.*
+
+*I deployed this on GitHub Pages. If you have the same experience, feel free to [try it out](https://jerrywang121.github.io/vocab-kids/)! It can quickly build a thousand-word deck from a word list. And you can port it to another device by export / import in the setting page.*
+
 ---
 
 ## ✨ Features
