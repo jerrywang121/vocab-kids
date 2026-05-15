@@ -196,6 +196,13 @@ function mergeProgress(incoming) {
 // ── Clear all data ────────────────────────────────────────────────────────────
 const showClearConfirm = ref(false)
 
+// ── Accordion: only one panel open at a time ──────────────────────────────────
+const openPanel = ref('profile')
+
+function togglePanel(name) {
+  openPanel.value = openPanel.value === name ? null : name
+}
+
 function clearAllData() {
   decksStore.decks.length    = 0
   cardsStore.cards.length    = 0
@@ -213,8 +220,8 @@ function clearAllData() {
     <div class="settings-form mt-2">
 
       <!-- Profile -->
-      <details class="settings-section card-surface" open>
-        <summary class="section-summary">👤 Profile</summary>
+      <details class="settings-section card-surface" :open="openPanel === 'profile'" @toggle.prevent>
+        <summary class="section-summary" @click.prevent="togglePanel('profile')">👤 Profile</summary>
         <div class="section-body">
           <div class="form-field">
             <label>Your Name</label>
@@ -239,8 +246,8 @@ function clearAllData() {
       </details>
 
       <!-- Appearance -->
-      <details class="settings-section card-surface">
-        <summary class="section-summary">🎨 Appearance</summary>
+      <details class="settings-section card-surface" :open="openPanel === 'appearance'" @toggle.prevent>
+        <summary class="section-summary" @click.prevent="togglePanel('appearance')">🎨 Appearance</summary>
         <div class="section-body">
           <div class="form-field">
             <label>Colour Scheme</label>
@@ -272,8 +279,8 @@ function clearAllData() {
       </details>
 
       <!-- TTS (Text-to-Speech) -->
-      <details class="settings-section card-surface">
-        <summary class="section-summary">🔊 Pronunciation</summary>
+      <details class="settings-section card-surface" :open="openPanel === 'pronunciation'" @toggle.prevent>
+        <summary class="section-summary" @click.prevent="togglePanel('pronunciation')">🔊 Pronunciation</summary>
         <div class="section-body">
           <div class="form-field">
             <label>Voice</label>
@@ -314,8 +321,8 @@ function clearAllData() {
       </details>
 
       <!-- Quiz -->
-      <details class="settings-section card-surface">
-        <summary class="section-summary">🧠 Quiz</summary>
+      <details class="settings-section card-surface" :open="openPanel === 'quiz'" @toggle.prevent>
+        <summary class="section-summary" @click.prevent="togglePanel('quiz')">🧠 Quiz</summary>
         <div class="section-body">
           <div class="form-field">
             <label>Questions per Quiz: <strong>{{ questionsPerQuiz }}</strong></label>
@@ -326,8 +333,8 @@ function clearAllData() {
       </details>
 
       <!-- APIs -->
-      <details class="settings-section card-surface">
-        <summary class="section-summary">🌐 APIs</summary>
+      <details class="settings-section card-surface" :open="openPanel === 'apis'" @toggle.prevent>
+        <summary class="section-summary" @click.prevent="togglePanel('apis')">🌐 APIs</summary>
         <div class="section-body">
           <label class="toggle-label">
             <input type="checkbox" v-model="dictionaryApiEnabled" />
@@ -452,8 +459,8 @@ function clearAllData() {
     </div>
 
     <!-- Data management -->
-    <details class="settings-section card-surface mt-3">
-      <summary class="section-summary">💾 Data</summary>
+    <details class="settings-section card-surface mt-3" :open="openPanel === 'data'" @toggle.prevent>
+      <summary class="section-summary" @click.prevent="togglePanel('data')">💾 Data</summary>
       <div class="section-body">
         <p class="text-muted" style="font-size:0.9rem;">
           {{ decksStore.decks.length }} decks · {{ cardsStore.cards.length }} cards

@@ -251,7 +251,7 @@ function restart() {
 }
 .progress-text { font-size: 0.9rem; font-weight: 700; }
 .card-stats { font-size: 0.85rem; text-align: center; }
-.nav-row { display: flex; gap: 0.75rem; justify-content: space-between; align-items: center; }
+.nav-row { display: flex; gap: 0.75rem; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
 .got-it-btn { flex: 1; }
 .nav-btn { font-size: 1.4rem; min-width: 56px; flex-shrink: 0; }
 .nav-btn:disabled { opacity: 0.3; cursor: default; }
