@@ -266,7 +266,7 @@ ${schema}
 
 For "forms": include only the keys that apply to the part of speech.
 For verb: include "Past Tense", "Past Participle", "3rd Person Singular", "Present Participle" (use the base word form as "word").
-For adjective: include "Comparative", "Superlative" if applicable (use the simple form as "word").
+For adjective: include "Comparative", "Superlative" if applicable (use the simple form as "word"). Do not include "Comparative"/"Superlative" for adjectives that just need more/most at the front (e.g. "important" → "more important"/"most important").
 For noun: include "Plural" (use the singular form as "word").
 For other parts of speech: omit "forms" or leave it as an empty object.
 
