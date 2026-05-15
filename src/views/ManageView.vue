@@ -338,7 +338,7 @@ function exportData() {
           class="sort-btn"
           :class="{ active: settingsStore.cardSortField === 'name' }"
           @click="setSortField('name')"
-        >Name</button>
+        >Word</button>
         <button
           class="sort-btn"
           :class="{ active: settingsStore.cardSortField === 'score' }"
