@@ -44,7 +44,7 @@ onUnmounted(() => document.removeEventListener('click', onOutsideClick))
   <header class="app-header">
     <div class="header-inner">
       <RouterLink to="/" class="logo">
-        <span class="logo-icon">📚</span>
+        <img :src="`${BASE_URL}pwa-192x192.png`" alt="VocabKids" class="logo-icon" />
         <span class="logo-text">VocabKids</span>
       </RouterLink>
 
@@ -124,7 +124,7 @@ onUnmounted(() => document.removeEventListener('click', onOutsideClick))
   text-decoration: none;
   flex-shrink: 0;
 }
-.logo-icon { font-size: 1.4rem; }
+.logo-icon { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
 .logo-text {
   font-family: 'Fredoka One', cursive;
   font-size: 1.3rem;
