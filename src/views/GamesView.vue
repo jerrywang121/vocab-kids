@@ -232,6 +232,14 @@ const speedInputRef     = ref(null)    // template ref for auto-focus
 const speedCard = computed(() => speedCards.value[speedIdx.value] ?? null)
 const speedDeck = computed(() => decksStore.decks.find(d => d.id === selectedDeckId.value))
 
+const speedMaskedDef = computed(() => {
+  const card = speedCard.value
+  if (!card?.definition || !card?.word) return card?.definition ?? ''
+  const escaped = card.word.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const mask = '_'.repeat(card.word.trim().length)
+  return card.definition.replace(new RegExp(escaped, 'gi'), mask)
+})
+
 const speedTimerPct = computed(() => (speedTimeLeft.value / SPEED_DURATION) * 100)
 const speedTimerColor = computed(() => {
   const p = speedTimerPct.value
@@ -736,7 +744,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
             <span v-for="n in speedCard.word.trim().length" :key="n" class="word-dot">●</span>
           </span>
         </div>
-        <p class="speed-def">{{ speedCard.definition }}</p>
+        <p class="speed-def">{{ speedMaskedDef }}</p>
       </div>
 
       <!-- Typing input -->
