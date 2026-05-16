@@ -102,9 +102,8 @@ export function fillGapQuestion(card, allCards) {
   const distractors = pickDistractors(allCards, card.id)
   if (distractors.length < 3) return null
 
-  const fmt = c => c.partOfSpeech ? `${c.word} (${c.partOfSpeech})` : c.word
-  const correctAnswer = fmt(card)
-  const choices = shuffle([correctAnswer, ...distractors.map(fmt)])
+  const correctAnswer = card.word
+  const choices = shuffle([correctAnswer, ...distractors.map(c => c.word)])
   return {
     type: 'fillgap',
     cardId: card.id,

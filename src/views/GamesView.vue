@@ -13,11 +13,32 @@ const cardsStore = useCardsStore()
 const phase = ref('hub')
 const selectedDeckId = ref(null)
 const secretWord = ref('')
+const hangmanCard = ref(null)
 const guessedLetters = ref(new Set())
 const wrongCount = ref(0)
 const MAX_WRONG = 6
 
 // ── Computed helpers
+function shuffleArray(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+function uniqueWordsForDeck(deckId) {
+  const cards = cardsStore.cardsForDeck(deckId)
+  const seen  = new Set()
+  const shuffled = shuffleArray(cards)
+  return shuffled.filter(c => {
+    const key = c.word.trim().toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
 const selectedDeck = computed(() => decksStore.decks.find(d => d.id === selectedDeckId.value))
 
 const normalised = computed(() => secretWord.value.toUpperCase())
@@ -41,18 +62,13 @@ const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
 // ── Pick a random word from deck (deduplicated by word text)
 function startHangman(deckId) {
-  const cards = cardsStore.cardsForDeck(deckId)
-  if (!cards.length) return
-  const seen = new Set()
-  const unique = cards.filter(c => {
-    const key = c.word.trim().toLowerCase()
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+  const unique  = uniqueWordsForDeck(deckId)
+  if (!unique.length) return
+
   const card = unique[Math.floor(Math.random() * unique.length)]
   selectedDeckId.value = deckId
   secretWord.value = card.word.trim()
+  hangmanCard.value = card
   guessedLetters.value = new Set()
   wrongCount.value = 0
   phase.value = 'hangman-play'
@@ -98,26 +114,11 @@ const placedTiles     = ref([])   // tiles the player has placed
 const scrambleHint    = ref(false)
 const scrambleWrong   = ref(false) // triggers shake animation
 const scrambleCorrect = ref(false) // game won
+const scrambleLost    = ref(false) // ran out of attempts
+const scrambleAttempts = ref(0)
+const MAX_SCRAMBLE_ATTEMPTS = 5
 
-function shuffleArray(arr) {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
 
-function uniqueWordsForDeck(deckId) {
-  const cards = cardsStore.cardsForDeck(deckId)
-  const seen  = new Set()
-  return cards.filter(c => {
-    const key = c.word.trim().toLowerCase()
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-}
 
 function startScramble(deckId) {
   const unique  = uniqueWordsForDeck(deckId)
@@ -145,12 +146,14 @@ function startScramble(deckId) {
   scrambleHint.value    = false
   scrambleWrong.value   = false
   scrambleCorrect.value = false
+  scrambleLost.value    = false
+  scrambleAttempts.value = 0
   selectedDeckId.value  = deckId
   phase.value           = 'scramble-play'
 }
 
 function placeTile(tile) {
-  if (scrambleCorrect.value || scrambleWrong.value) return
+  if (scrambleCorrect.value || scrambleWrong.value || scrambleLost.value) return
   scrambleTiles.value = scrambleTiles.value.filter(t => t.id !== tile.id)
   placedTiles.value   = [...placedTiles.value, tile]
 
@@ -161,7 +164,7 @@ function placeTile(tile) {
 }
 
 function removeTile(tile) {
-  if (scrambleCorrect.value || scrambleWrong.value) return
+  if (scrambleCorrect.value || scrambleWrong.value || scrambleLost.value) return
   placedTiles.value   = placedTiles.value.filter(t => t.id !== tile.id)
   scrambleTiles.value = [...scrambleTiles.value, tile]
 }
@@ -174,18 +177,24 @@ function checkAnswer() {
     scrambleCorrect.value = true
     phase.value = 'scramble-result'
   } else {
+    scrambleAttempts.value++
     scrambleWrong.value = true
     setTimeout(() => {
-      // Return all placed tiles to the pool and re-shuffle
-      scrambleTiles.value = shuffleArray([...scrambleTiles.value, ...placedTiles.value])
-      placedTiles.value   = []
+      if (scrambleAttempts.value >= MAX_SCRAMBLE_ATTEMPTS) {
+        scrambleLost.value = true
+        phase.value = 'scramble-result'
+      } else {
+        // Return all placed tiles to the pool and re-shuffle
+        scrambleTiles.value = shuffleArray([...scrambleTiles.value, ...placedTiles.value])
+        placedTiles.value   = []
+      }
       scrambleWrong.value = false
     }, 600)
   }
 }
 
 function clearPlaced() {
-  if (scrambleCorrect.value || scrambleWrong.value) return
+  if (scrambleCorrect.value || scrambleWrong.value || scrambleLost.value) return
   scrambleTiles.value = shuffleArray([...scrambleTiles.value, ...placedTiles.value])
   placedTiles.value   = []
 }
@@ -209,7 +218,7 @@ const emptySlots = computed(() =>
 
 const SPEED_DURATION    = 60   // seconds
 const SPEED_BONUS       = 3    // seconds added per correct answer
-const SPEED_PENALTY     = 5    // seconds deducted per skip
+const SPEED_MAX_WORDS    = 10   // max words per game
 
 const speedCards        = ref([])
 const speedIdx          = ref(0)
@@ -237,22 +246,18 @@ watch(speedInputVal, val => {
   if (val.trim().toLowerCase() === speedCard.value.word.trim().toLowerCase()) submitSpeed()
 })
 
-function startSpeed(deckId) {
-  const cards = cardsStore.cardsForDeck(deckId)
-  if (!cards.length) return
+function prefillFirstLetter() {
+  const word = speedCard.value?.word.trim() ?? ''
+  speedInputVal.value = word.length ? word[0] : ''
+}
 
-  const seen   = new Set()
-  const unique = cards.filter(c => {
-    const key = c.word.trim().toLowerCase()
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+function startSpeed(deckId) {
+  const unique  = uniqueWordsForDeck(deckId)
+  if (!unique.length) return
 
   selectedDeckId.value  = deckId
-  speedCards.value      = shuffleArray(unique)
+  speedCards.value      = shuffleArray(unique).slice(0, SPEED_MAX_WORDS)
   speedIdx.value        = 0
-  speedInputVal.value   = ''
   speedScore.value      = 0
   speedTimeLeft.value   = SPEED_DURATION
   speedFeedback.value   = null
@@ -267,7 +272,10 @@ function startSpeed(deckId) {
     }
   }, 1000)
 
-  nextTick(() => speedInputRef.value?.focus())
+  nextTick(() => {
+    prefillFirstLetter()
+    speedInputRef.value?.focus()
+  })
 }
 
 function submitSpeed() {
@@ -279,21 +287,23 @@ function submitSpeed() {
     speedScore.value++
     speedTimeLeft.value   = Math.min(SPEED_DURATION, speedTimeLeft.value + SPEED_BONUS)
     speedFeedback.value   = 'correct'
-    speedInputVal.value   = ''
     setTimeout(() => {
       speedFeedback.value = null
       speedIdx.value++
       if (speedIdx.value >= speedCards.value.length) {
         endSpeed()
       } else {
-        nextTick(() => speedInputRef.value?.focus())
+        nextTick(() => {
+          prefillFirstLetter()
+          speedInputRef.value?.focus()
+        })
       }
     }, 500)
   } else {
     speedFeedback.value = 'wrong'
     setTimeout(() => {
       speedFeedback.value = null
-      speedInputVal.value = ''
+      prefillFirstLetter()
       nextTick(() => speedInputRef.value?.focus())
     }, 600)
   }
@@ -301,15 +311,22 @@ function submitSpeed() {
 
 function skipSpeed() {
   if (speedFeedback.value || phase.value !== 'speed-play') return
-  speedInputVal.value = ''
-  speedIdx.value++
-  speedTimeLeft.value = Math.max(0, speedTimeLeft.value - SPEED_PENALTY)
-  if (speedIdx.value >= speedCards.value.length || speedTimeLeft.value <= 0) {
-    speedTimeLeft.value = Math.max(0, speedTimeLeft.value)
-    endSpeed()
-  } else {
-    nextTick(() => speedInputRef.value?.focus())
-  }
+  const correctWord = speedCard.value?.word.trim() ?? ''
+  speedInputVal.value = correctWord
+  speedFeedback.value = 'skip'
+  setTimeout(() => {
+    speedFeedback.value = null
+    speedIdx.value++
+    if (speedIdx.value >= speedCards.value.length || speedTimeLeft.value <= 0) {
+      speedTimeLeft.value = Math.max(0, speedTimeLeft.value)
+      endSpeed()
+    } else {
+      nextTick(() => {
+        prefillFirstLetter()
+        speedInputRef.value?.focus()
+      })
+    }
+  }, 3000)
 }
 
 function endSpeed() {
@@ -510,6 +527,15 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
           <p class="result-word">{{ secretWord }}</p>
         </template>
 
+        <div v-if="hangmanCard?.definition || hangmanCard?.exampleSentence" class="mt-1">
+          <p v-if="hangmanCard.definition" class="text-muted mt-1" style="font-size:0.9rem">
+            {{ hangmanCard.definition }}
+          </p>
+          <p v-if="hangmanCard.exampleSentence" class="text-muted mt-1" style="font-size:0.9rem">
+            <em>{{ hangmanCard.exampleSentence }}</em>
+          </p>
+        </div>
+
         <div class="flex gap-2 mt-3" style="flex-wrap:wrap;justify-content:center">
           <button class="btn btn-primary" @click="playAgain">🔄 Play Again</button>
           <button class="btn btn-ghost" @click="phase = 'hangman-select'">Change Deck</button>
@@ -556,6 +582,11 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
 
       <h1>🔤 Word Scramble</h1>
 
+      <!-- Attempt counter -->
+      <p class="text-muted mt-1" style="font-size:0.85rem">
+        Attempts: {{ scrambleAttempts }} / {{ MAX_SCRAMBLE_ATTEMPTS }}
+      </p>
+
       <!-- Hint toggle -->
       <div class="hint-row mt-2">
         <button class="btn btn-ghost hint-btn" @click="scrambleHint = !scrambleHint">
@@ -564,9 +595,6 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
       </div>
       <div v-if="scrambleHint" class="hint-box card-surface mt-1">
         <p class="hint-def">{{ scrambleCard?.definition }}</p>
-        <p v-if="scrambleCard?.exampleSentence" class="hint-example text-muted">
-          "{{ scrambleCard.exampleSentence }}"
-        </p>
       </div>
 
       <!-- Answer area -->
@@ -580,7 +608,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
             v-for="tile in placedTiles"
             :key="tile.id"
             class="tile tile-placed"
-            :disabled="scrambleCorrect || scrambleWrong"
+            :disabled="scrambleCorrect || scrambleWrong || scrambleLost"
             @click="removeTile(tile)"
           >{{ tile.letter }}</button>
           <!-- Empty slots -->
@@ -598,7 +626,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
           v-for="tile in scrambleTiles"
           :key="tile.id"
           class="tile tile-pool"
-          :disabled="scrambleCorrect || scrambleWrong"
+          :disabled="scrambleCorrect || scrambleWrong || scrambleLost"
           @click="placeTile(tile)"
         >{{ tile.letter }}</button>
       </div>
@@ -607,18 +635,28 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
       <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
         <button
           class="btn btn-ghost"
-          :disabled="!placedTiles.length || scrambleCorrect || scrambleWrong"
+          :disabled="!placedTiles.length || scrambleCorrect || scrambleWrong || scrambleLost"
           @click="clearPlaced"
         >↩ Clear</button>
       </div>
 
       <!-- Result overlay -->
       <div v-if="phase === 'scramble-result'" class="result-banner card-surface mt-3 text-center">
-        <div class="result-emoji">🎉</div>
-        <h2 class="result-title">Brilliant!</h2>
+        <template v-if="scrambleCorrect">
+          <div class="result-emoji">🎉</div>
+          <h2 class="result-title">Brilliant!</h2>
+        </template>
+        <template v-else>
+          <div class="result-emoji">😢</div>
+          <h2 class="result-title">Better luck next time!</h2>
+          <p class="text-muted" style="font-size:0.9rem">The word was</p>
+        </template>
         <p class="result-word">{{ scrambleCard?.word }}</p>
         <p v-if="scrambleCard?.definition" class="text-muted mt-1" style="font-size:0.9rem">
           {{ scrambleCard.definition }}
+        </p>
+        <p v-if="scrambleCard?.exampleSentence" class="text-muted mt-1" style="font-size:0.9rem">
+          <em>{{ scrambleCard.exampleSentence }}</em>
         </p>
         <div class="flex gap-2 mt-3" style="flex-wrap:wrap;justify-content:center">
           <button class="btn btn-primary" @click="playScrambleAgain">🔄 New Word</button>
@@ -699,9 +737,6 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
           </span>
         </div>
         <p class="speed-def">{{ speedCard.definition }}</p>
-        <p v-if="speedCard.exampleSentence" class="speed-example text-muted">
-          "{{ speedCard.exampleSentence }}"
-        </p>
       </div>
 
       <!-- Typing input -->
@@ -717,6 +752,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
           autocapitalize="off"
           spellcheck="false"
           :disabled="speedFeedback !== null || phase === 'speed-result'"
+          :class="{ 'speed-input-skip': speedFeedback === 'skip' }"
           @keydown.enter.prevent="submitSpeed"
         />
       </div>
@@ -731,7 +767,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
           class="btn btn-ghost"
           :disabled="speedFeedback !== null || phase === 'speed-result'"
           @click="skipSpeed"
-        >⏭ Skip <span class="skip-penalty">−{{ SPEED_PENALTY }}s</span></button>
+        >⏭ Skip</button>
       </div>
 
       <!-- Result overlay -->
@@ -1128,12 +1164,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 .speed-input:disabled { opacity: 0.7; }
-
-.skip-penalty {
-  font-size: 0.75rem;
-  opacity: 0.75;
-  margin-left: 0.2rem;
-}
+.speed-input-skip { border-color: var(--color-text-muted) !important; color: var(--color-text-muted) !important; }
 
 .speed-result-score {
   font-family: 'Fredoka One', cursive;

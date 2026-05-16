@@ -62,11 +62,6 @@ onMounted(() => {
     </div>
 
     <div class="mode-grid mt-3">
-      <RouterLink to="/manage" class="mode-card card-surface">
-        <div class="mode-icon">📖</div>
-        <div class="mode-name">Manage</div>
-        <div class="mode-desc text-muted">Add &amp; organise decks and cards</div>
-      </RouterLink>
       <RouterLink to="/learn" class="mode-card card-surface">
         <div class="mode-icon">🔄</div>
         <div class="mode-name">Learn</div>
@@ -86,6 +81,11 @@ onMounted(() => {
         <div class="mode-icon">🏆</div>
         <div class="mode-name">Achievements</div>
         <div class="mode-desc text-muted">See how far you've come</div>
+      </RouterLink>
+      <RouterLink to="/manage" class="mode-card card-surface">
+        <div class="mode-icon">📖</div>
+        <div class="mode-name">Manage</div>
+        <div class="mode-desc text-muted">Add &amp; organise decks and cards</div>
       </RouterLink>
       <RouterLink to="/settings" class="mode-card card-surface">
         <div class="mode-icon">⚙️</div>
