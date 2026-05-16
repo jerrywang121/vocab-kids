@@ -1,20 +1,22 @@
-# Vocab Kids 📚
+# Vocab Kids
+
+<img src="public/pwa-192x192.png" alt="VocabKids icon" width="96" height="96" style="border-radius:16px" />
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa)](https://jerrywang121.github.io/vocab-kids/)
 [![GitHub](https://img.shields.io/badge/GitHub-jerrywang121%2Fvocab--kids-181717?logo=github)](https://github.com/jerrywang121/vocab-kids)
 
 > A browser-based English vocabulary flashcard app for kids — runs entirely offline, no account needed.
 
 VocabKids lets children (and their parents/teachers) build custom word decks, practise with animated flashcards, test their knowledge with auto-generated quizzes, and play word games. Everything runs in the browser and persists in `localStorage` — no server, no sign-up.
 
-*blah blah blah ... OK, it is for my son, who is doing 11+, having 1000+ words on his list that he seems never want to look at. Built this to help him "gaming" on it... hope it works.*
-
-*I deployed this on GitHub Pages. If you have the same experience, feel free to [try it out](https://jerrywang121.github.io/vocab-kids/)! It can quickly build a thousand-word deck from a word list. And you can port it to another device by export / import in the setting page.*
+*blah blah blah ... OK, it is for my son, who is doing 11+, having 1000+ words on his list that he seems never want to look at. Built this to help him "gaming" on it... hope it works. If you have the same experience, feel free to [try it out](https://jerrywang121.github.io/vocab-kids/)!*
 
 ---
 
 ## ✨ Features
 
+- **PWA — install as app** — add to home screen on Android / iOS / Desktop; works offline
 - **Flashcard decks** — create, edit, and colour-code unlimited decks
 - **Smart learning mode** — flip cards, mark *Got it* / *Keep practising*; cards are prioritised by a time-decay score so weaker words surface more often
 - **Mixed quizzes** — three question types generated automatically:
@@ -64,12 +66,27 @@ npm run preview  # serve the production build locally
 
 ---
 
+## 📱 Install as App (PWA)
+
+VocabKids is a **Progressive Web App** — no app store needed.
+
+1. Open the [GitHub Pages](https://jerrywang121.github.io/vocab-kids/) in Chrome (Android) or Safari (iOS)
+2. Tap **"Add to Home Screen"** from the browser menu
+3. An icon appears on your home screen — it opens fullscreen, just like a native app
+
+Works offline once installed. All data stays on-device via `localStorage`.
+
+---
+
 ## 🗂️ Project Structure
 
 ```
 lingokids-local/
 ├── public/
-│   └── avatars/          # PNG avatar images
+│   ├── avatars/          # PNG avatar images
+│   ├── pwa-192x192.png   # PWA icon (home screen)
+│   ├── pwa-512x512.png   # PWA icon (splash / maskable)
+│   └── apple-touch-icon.png  # iOS home screen icon
 ├── src/
 │   ├── main.js           # app entry point
 │   ├── App.vue           # root: theme + dark-mode binding
@@ -193,6 +210,7 @@ Import merges by `id`; newer progress entries win on conflict.
 | Styling | CSS3 custom properties |
 | Storage | `localStorage` (via Pinia plugin) |
 | TTS | Web Speech API |
+| PWA | `vite-plugin-pwa` + Workbox (offline, installable) |
 
 ---
 

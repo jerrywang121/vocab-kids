@@ -27,6 +27,7 @@ VocabKids is a browser-based flashcard app to help kids learn English vocabulary
 | Dictionary API | `api.dictionaryapi.dev` | Free, no key required |
 | AI API | User-configured; 17+ providers supported | Optional enrichment & quiz generation |
 | TTS | Web Speech API (`SpeechSynthesis`) | Built-in, no extra dependency |
+| PWA | `vite-plugin-pwa` (Workbox) | Installable on Android / iOS / Desktop, offline support |
 
 ---
 
@@ -316,7 +317,10 @@ lingokids-local/
 ├── vite.config.js
 ├── LICENSE
 ├── public/
-│   └── avatars/
+│   ├── avatars/
+│   ├── pwa-192x192.png       # PWA home-screen icon
+│   ├── pwa-512x512.png       # PWA splash / maskable icon
+│   └── apple-touch-icon.png  # iOS add-to-home-screen icon
 ├── src/
 │   ├── main.js
 │   ├── App.vue                   # theme + dark-mode class binding
@@ -386,3 +390,29 @@ npm run preview
 | `ttsVoice` | string | `''` | `voiceURI`; empty = browser default |
 | `ttsPitch` | number | `1` | 0.5 – 2 |
 | `ttsRate` | number | `1` | 0.5 – 2 |
+
+## 14. PWA (Progressive Web App)
+
+VocabKids ships as a fully installable PWA via `vite-plugin-pwa` (Workbox).
+
+### Configuration (`vite.config.js`)
+- `registerType: 'autoUpdate'` — service worker updates silently in the background
+- `display: 'standalone'` — opens fullscreen without browser chrome
+- `start_url` / `scope` scoped to `/vocab-kids/` (GitHub Pages base path)
+
+### Icons
+| File | Size | Usage |
+|---|---|---|
+| `public/pwa-192x192.png` | 192×192 | Android home screen icon |
+| `public/pwa-512x512.png` | 512×512 | Splash screen + maskable |
+| `public/apple-touch-icon.png` | 180×180 | iOS add-to-home-screen |
+
+### Caching strategy (Workbox)
+- **Precache**: all JS, CSS, HTML, images, SVGs bundled in `dist/`
+- **Runtime cache (CacheFirst, 1 year)**: Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`)
+
+### Install flow
+1. User opens the hosted HTTPS URL in Chrome (Android) or Safari (iOS)
+2. Browser shows "Add to Home Screen" prompt automatically
+3. App icon appears on home screen; opens standalone (no browser UI)
+4. All data (`localStorage`) is already on-device — fully offline after first load
