@@ -212,6 +212,14 @@ const emptySlots = computed(() =>
     : 0
 )
 
+const scrambleMaskedDef = computed(() => {
+  const card = scrambleCard.value
+  if (!card?.definition || !card?.word) return card?.definition ?? ''
+  const escaped = card.word.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const mask = '_'.repeat(card.word.trim().length)
+  return card.definition.replace(new RegExp(escaped, 'gi'), mask)
+})
+
 // ════════════════════════════════════════════════════════════════
 // SPEED SPELL
 // ════════════════════════════════════════════════════════════════
@@ -602,7 +610,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
         </button>
       </div>
       <div v-if="scrambleHint" class="hint-box card-surface mt-1">
-        <p class="hint-def">{{ scrambleCard?.definition }}</p>
+        <p class="hint-def">{{ scrambleMaskedDef }}</p>
       </div>
 
       <!-- Answer area -->
