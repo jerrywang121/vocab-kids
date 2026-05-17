@@ -100,7 +100,7 @@ export const useProgressStore = defineStore('progress', () => {
     const total = p.correctCount + p.wrongCount
     if (total === 0) return 0.5
     const correctDecay = decayFactor(daysSince(p.lastCorrectAt), COUNT_DECAY_DAYS)
-    const lastDate = Math.max(p.lastCorrectAt, p.lastWrongAt)
+    const lastDate = p.lastCorrectAt && p.lastWrongAt ? (new Date(p.lastCorrectAt) > new Date(p.lastWrongAt) ? p.lastCorrectAt : p.lastWrongAt) : (p.lastCorrectAt || p.lastWrongAt)
     const scoreDecay   = decayFactor(daysSince(lastDate), SCORE_DECAY_DAYS)
     return p.correctCount * correctDecay / (p.wrongCount + MAX_COUNT * correctDecay) * scoreDecay
   }

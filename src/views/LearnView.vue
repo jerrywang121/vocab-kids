@@ -19,7 +19,7 @@ const selectedDeck = computed(() => decksStore.decks.find(d => d.id === selected
 const deckCards    = computed(() => {
   if (!selectedDeckId.value) return []
   return [...cardsStore.cardsForDeck(selectedDeckId.value)]
-    .sort((a, b) => progressStore.cardScoreForOrder(a.id) - progressStore.cardScoreForOrder(b.id))
+    .sort((a, b) => progressStore.cardScoreForOrder(a.id) - progressStore.cardScoreForOrder(b.id) + (Math.random() - 0.5) * 0.2)
 })
 const currentCard  = computed(() => deckCards.value[currentIndex.value] ?? null)
 const progress     = computed(() => currentCard.value ? progressStore.getProgress(currentCard.value.id) : null)

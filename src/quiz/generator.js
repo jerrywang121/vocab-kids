@@ -17,7 +17,7 @@ export function buildQuiz(cards, deckId, questionCount = 30, scoreOf = null) {
   const shuffled = [...cards].sort((a, b) => {
     const sa = (scoreOf ? scoreOf(a.id) : 0.5)
     const sb = (scoreOf ? scoreOf(b.id) : 0.5)
-    return sa - sb + (Math.random() - 0.5) * 0.1  // add some jitter for variety
+    return sb - sa + (Math.random() - 0.5) * 0.2  // add some jitter for variety
   })
 
   // extract cards with unique word and partOfSpeech to ensure we have enough distinct options for questions
