@@ -103,7 +103,7 @@ async function answer(idx) {
 
   answers.value.push({ questionIdx: currentIdx.value, chosenIndex: idx, correct })
 
-  await new Promise(r => setTimeout(r, 900))
+  await new Promise(r => setTimeout(r, correct ? 900 : 2000))
   feedbackClass.value = ''
   chosenIndex.value = null
 

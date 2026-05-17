@@ -1,3 +1,10 @@
+/** Replace whole-word occurrences of `word` in `text` with ___ (case-insensitive). */
+function maskWord(text, word) {
+  if (!text || !word) return text
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return text.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), '___')
+}
+
 /** Shuffle an array in-place (Fisher-Yates). Returns the array. */
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -21,9 +28,10 @@ export function definitionQuestion(card, allCards) {
   if (distractors.length < 3) return null
 
   const choices = shuffle([
-    card.definition,
-    ...distractors.map(c => c.definition),
+    maskWord(card.definition, card.word),
+    ...distractors.map(c => maskWord(c.definition, card.word)),
   ])
+  const maskedCorrect = maskWord(card.definition, card.word)
   return {
     type: 'definition',
     cardId: card.id,
@@ -31,7 +39,7 @@ export function definitionQuestion(card, allCards) {
     partOfSpeech: card.partOfSpeech ?? null,
     promptLabel: 'What is the definition of:',
     choices,
-    correctIndex: choices.indexOf(card.definition),
+    correctIndex: choices.indexOf(maskedCorrect),
   }
 }
 
