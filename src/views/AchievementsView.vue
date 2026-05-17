@@ -1,17 +1,9 @@
 <script setup>
-import { computed } from 'vue'
-import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale, LinearScale,
-  PointElement, LineElement,
-  Title, Tooltip, Legend, Filler,
-} from 'chart.js'
+import { computed, ref, onMounted } from 'vue'
+import LineChart from '../components/LineChart.vue'
 import { useDecksStore }    from '../stores/useDecksStore'
 import { useCardsStore }    from '../stores/useCardsStore'
 import { useProgressStore } from '../stores/useProgressStore'
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 const decksStore    = useDecksStore()
 const cardsStore    = useCardsStore()
@@ -69,6 +61,9 @@ const chartData = computed(() => {
   return { labels: allDates, datasets }
 })
 
+const isMounted = ref(false)
+onMounted(() => { isMounted.value = true })
+
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -117,10 +112,10 @@ const chartOptions = {
     </section>
 
     <!-- Progress chart -->
-    <section class="card-surface mt-3" v-if="chartData">
+    <section class="card-surface mt-3" v-if="chartData && isMounted">
       <h2 style="font-size:1.1rem;margin-bottom:1rem">📈 Progress Over Time</h2>
       <div class="chart-wrap">
-        <Line :data="chartData" :options="chartOptions" />
+        <LineChart :data="chartData" :options="chartOptions" />
       </div>
     </section>
 
