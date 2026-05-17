@@ -31,6 +31,14 @@ const gapParts = computed(() => {
   return parts.length === 2 ? parts : null
 })
 
+// Highlight SAME / OPPOSITE keywords in synonym question labels
+const highlightedPromptLabel = computed(() => {
+  const label = currentQ.value?.promptLabel ?? ''
+  return label
+    .replace(/\bSAME\b/g, '<mark class="q-keyword q-keyword--same">SAME</mark>')
+    .replace(/\bOPPOSITE\b/g, '<mark class="q-keyword q-keyword--opposite">OPPOSITE</mark>')
+})
+
 // ── Score breakdown
 const scoreByType = computed(() => {
   const map = { definition: [0,0], synonym: [0,0], fillgap: [0,0] }
@@ -160,7 +168,7 @@ function reset() {
       </div>
 
       <div class="question-card card-surface mt-3" :class="feedbackClass">
-        <p class="q-label text-muted">{{ currentQ.promptLabel }}</p>
+        <p class="q-label text-muted" v-html="highlightedPromptLabel"></p>
         <!-- Fill-gap: once answered, animate the correct word into the gap -->
         <p v-if="currentQ.type === 'fillgap' && gapParts && chosenIndex !== null" class="q-prompt">
           {{ gapParts[0] }}<span class="gap-reveal" :key="currentIdx">{{ currentQ.gapWord }}</span>{{ gapParts[1] }}
@@ -215,6 +223,11 @@ function reset() {
 /* Dark mode overrides for choice feedback — must be global to beat scoped specificity */
 body.dark .choice-btn.correct { background: #1b3a1d !important; color: #a5d6a7 !important; border-color: #2e7d32 !important; }
 body.dark .choice-btn.wrong   { background: #3a1a1a !important; color: #ef9a9a !important; border-color: #c62828 !important; }
+
+/* q-keyword styles must be global because they are injected via v-html */
+.q-keyword { font-weight: 900; font-style: italic; padding: 0 0.25em; border-radius: 0.3em; }
+.q-keyword--same     { background: #e8f5e9; color: #2e7d32; }
+.q-keyword--opposite { background: #fce4ec; color: #c62828; }
 </style>
 
 <style scoped>
