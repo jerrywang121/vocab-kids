@@ -173,7 +173,7 @@ function restart() {
       <div v-if="currentCard" class="mt-3">
         <div class="nav-row mb-1">
           <button class="btn btn-ghost nav-btn" :disabled="!hasPrevUnlearned" @click="navigatePrev">←</button>
-          <button class="btn btn-primary got-it-btn" @click="gotIt">✅ Got It!</button>
+          <button class="btn btn-primary got-it-btn" @click="gotIt">✅ I Know It!</button>
           <button class="btn btn-ghost nav-btn" :disabled="!hasNextUnlearned" @click="navigateNext">→</button>
         </div>
 
