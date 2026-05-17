@@ -598,11 +598,6 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
 
       <h1>🔤 Word Scramble</h1>
 
-      <!-- Attempt counter -->
-      <p class="text-muted mt-1" style="font-size:0.85rem">
-        Attempts: {{ scrambleAttempts }} / {{ MAX_SCRAMBLE_ATTEMPTS }}
-      </p>
-
       <!-- Hint toggle -->
       <div class="hint-row mt-2">
         <button class="btn btn-ghost hint-btn" @click="scrambleHint = !scrambleHint">
@@ -648,12 +643,17 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
       </div>
 
       <!-- Action buttons -->
-      <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
+      <div class="flex gap-2 mt-3" style="flex-wrap:wrap;justify-content:space-between">
         <button
           class="btn btn-ghost"
           :disabled="!placedTiles.length || scrambleCorrect || scrambleWrong || scrambleLost"
           @click="clearPlaced"
         >↩ Clear</button>
+        <button
+          class="btn btn-ghost"
+          :disabled="scrambleCorrect || scrambleWrong || scrambleLost"
+          @click="scrambleLost = true; phase = 'scramble-result'"
+        >👁 Show answer</button>
       </div>
 
       <!-- Result overlay -->
@@ -773,7 +773,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
         />
       </div>
 
-      <div class="flex gap-2 mt-2" style="flex-wrap:wrap">
+      <div class="flex gap-2 mt-2" style="flex-wrap:wrap;justify-content:space-between">
         <button
           class="btn btn-primary"
           :disabled="!speedInputVal.trim() || speedFeedback !== null || phase === 'speed-result'"
@@ -783,7 +783,7 @@ onBeforeUnmount(() => clearInterval(speedTimerHandle.value))
           class="btn btn-ghost"
           :disabled="speedFeedback !== null || phase === 'speed-result'"
           @click="skipSpeed"
-        >⏭ Skip</button>
+        >👁 Show answer</button>
       </div>
 
       <!-- Result overlay -->
