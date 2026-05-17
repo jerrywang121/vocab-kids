@@ -35,6 +35,7 @@ const view = ref('form')
 const aiError = ref('')
 const aiResults = ref([])          // array of card objects from AI
 const aiSelected = ref(new Set())  // indices of selected cards
+const showDictFallback = ref(false)
 
 const isEditMode = computed(() => !!props.modelValue)
 const aiAvailable = computed(() =>
@@ -55,6 +56,7 @@ watch(() => props.modelValue, (val) => {
   view.value = 'form'
   aiResults.value = []
   aiSelected.value = new Set()
+  showDictFallback.value = false
 }, { immediate: true })
 
 // ── AI lookup ────────────────────────────────────────────
@@ -72,6 +74,7 @@ async function runAILookup() {
 
   view.value = 'ai-loading'
   aiError.value = ''
+  showDictFallback.value = false
 
   try {
     const { convertWordsToCards } = await import('../api/ai.js')
@@ -81,6 +84,7 @@ async function runAILookup() {
     if (!cards || cards.length === 0) {
       aiError.value = 'No results returned. Check your AI settings or try again.'
       view.value = 'form'
+      showDictFallback.value = true
       return
     }
 
@@ -88,7 +92,35 @@ async function runAILookup() {
     aiSelected.value = new Set(cards.map((_, i) => i)) // select all by default
     view.value = 'ai-results'
   } catch (err) {
-    aiError.value = `Error: ${err.message}`
+    aiError.value = `AI lookup failed: ${err.message}`
+    view.value = 'form'
+    showDictFallback.value = true
+  }
+}
+
+async function runDictionaryLookup() {
+  const word = form.value.word.trim()
+  if (!word) return
+
+  view.value = 'ai-loading'
+  aiError.value = ''
+  showDictFallback.value = false
+
+  try {
+    const { lookupWordCards } = await import('../api/dictionary.js')
+    const { data, error } = await lookupWordCards(word)
+
+    if (error || !data?.length) {
+      aiError.value = error || `No definitions found for "${word}" in the dictionary.`
+      view.value = 'form'
+      return
+    }
+
+    aiResults.value = data
+    aiSelected.value = new Set(data.map((_, i) => i))
+    view.value = 'ai-results'
+  } catch (err) {
+    aiError.value = `Dictionary lookup failed: ${err.message}`
     view.value = 'form'
   }
 }
@@ -150,6 +182,14 @@ function submit() {
               </button>
             </div>
             <p v-if="aiError" class="ai-error">{{ aiError }}</p>
+            <button
+              v-if="showDictFallback"
+              type="button"
+              class="btn btn-secondary dict-fallback-btn"
+              @click="runDictionaryLookup"
+            >
+              📖 Try Dictionary API instead
+            </button>
           </div>
 
           <div class="form-row">
@@ -320,6 +360,7 @@ function submit() {
 .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .ai-error { color: #c62828; font-size: 0.85rem; margin-top: 0.3rem; }
+.dict-fallback-btn { margin-top: 0.4rem; font-size: 0.85rem; align-self: flex-start; }
 
 /* ── AI results ── */
 .ai-results-header { display: flex; flex-direction: column; gap: 0.3rem; }
