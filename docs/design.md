@@ -272,6 +272,16 @@ All AI prompts are tailored to the `userAgeGroup` setting:
 - `'9-11'` → moderate vocabulary, clear language
 - `'12+'` → richer vocabulary, more nuanced
 
+### 8.1 Google Drive Sync (`api/googleDrive.js` & `useGoogleSync.js`)
+
+#### Authentication
+Uses **Google Identity Services (GIS)** OAuth 2.0 Token Model. The app requests an `access_token` with the `drive.file` scope. This scope only allows the app to access files it has created.
+
+#### Sync Mechanism
+- **Initialization**: On connection, the app searches for `vocab-kids-backup.json`. If found, it performs an initial download and merge.
+- **Auto-Sync**: A watcher monitors `decks`, `cards`, and `progress` stores. Any change triggers a debounced (5s) upload of the entire state to Google Drive.
+- **Merging**: Remote data is merged into local state. Newer progress entries (based on `lastCorrectAt`) win during conflicts.
+
 ---
 
 ## 9. Import / Export
@@ -390,6 +400,9 @@ npm run preview
 | `ttsVoice` | string | `''` | `voiceURI`; empty = browser default |
 | `ttsPitch` | number | `1` | 0.5 – 2 |
 | `ttsRate` | number | `1` | 0.5 – 2 |
+| `googleDriveEnabled` | boolean | `false` | |
+| `googleDriveFileId` | string | `null` | File ID of the backup in Drive |
+| `lastSyncAt` | ISO8601 | `null` | Timestamp of last successful sync |
 
 ## 14. PWA (Progressive Web App)
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore } from '../stores/useSettingsStore'
 import { useDecksStore }    from '../stores/useDecksStore'
@@ -7,12 +7,27 @@ import { useCardsStore }    from '../stores/useCardsStore'
 import { useProgressStore } from '../stores/useProgressStore'
 import { PROVIDERS }        from '../api/providers.js'
 import { useSpeech }        from '../composables/useSpeech'
+import { useGoogleSync }    from '../composables/useGoogleSync'
 
 const settings      = useSettingsStore()
 const decksStore    = useDecksStore()
 const cardsStore    = useCardsStore()
 const progressStore = useProgressStore()
 const { speak }     = useSpeech()
+const { isSyncing, syncError, connect, upload } = useGoogleSync()
+
+// Connectivity state
+const isOnline = ref(navigator.onLine)
+const updateOnlineStatus = () => { isOnline.value = navigator.onLine }
+
+onMounted(() => {
+  window.addEventListener('online',  updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
+})
+onUnmounted(() => {
+  window.removeEventListener('online',  updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
+})
 
 // All settings bind directly to the store — changes persist immediately
 const {
@@ -20,6 +35,7 @@ const {
   questionsPerQuiz, dictionaryApiEnabled, userAgeGroup,
   ttsVoice, ttsPitch, ttsRate,
   aiProvider, aiApiKey, aiApiUrl, aiModel, aiCallsPerMinute, aiBatchSize,
+  googleDriveEnabled, lastSyncAt,
 } = storeToRefs(settings)
 
 const AGE_GROUPS = [
@@ -456,6 +472,53 @@ function clearAllData() {
         </div>
       </details>
 
+      <!-- Google Drive Sync -->
+      <details class="settings-section card-surface" :open="openPanel === 'sync'" @toggle.prevent>
+        <summary class="section-summary" @click.prevent="togglePanel('sync')">☁️ Backup & Sync</summary>
+        <div class="section-body">
+          <p class="text-muted" style="font-size:0.9rem;">
+            Automatically backup your decks and cards to your Google Drive account.
+          </p>
+
+          <div v-if="!isOnline" class="offline-notice mt-1">
+            <span class="status-dot offline"></span>
+            <span>You are currently offline. Sync is unavailable.</span>
+          </div>
+
+          <div v-if="!googleDriveEnabled" class="mt-1">
+            <button class="btn btn-primary w-100" @click="connect" :disabled="!isOnline">
+              Connect Google Account
+            </button>
+          </div>
+
+          <div v-else class="sync-status-box mt-1">
+            <div class="sync-info">
+              <span class="status-dot" :class="isOnline ? 'online' : 'offline'"></span>
+              <div class="sync-text">
+                <div class="sync-label">Google Drive Connected</div>
+                <div class="sync-time text-muted">
+                  Last sync: {{ lastSyncAt ? new Date(lastSyncAt).toLocaleString() : 'Never' }}
+                </div>
+              </div>
+            </div>
+
+            <div class="sync-actions mt-2">
+              <button class="btn btn-ghost btn-sm" :disabled="isSyncing || !isOnline" @click="upload">
+                <span v-if="isSyncing">⏳ Syncing…</span>
+                <span v-else>🔄 Sync Now</span>
+              </button>
+              <button class="btn btn-ghost btn-sm text-danger" @click="googleDriveEnabled = false" :disabled="!isOnline">
+                Disconnect
+              </button>
+            </div>
+          </div>
+
+          <div v-if="syncError" class="models-msg msg-error mt-1">
+            ❌ {{ syncError }}
+          </div>
+        </div>
+      </details>
+
     </div>
 
     <!-- Data management -->
@@ -489,6 +552,10 @@ function clearAllData() {
         </svg>
         View source on GitHub
       </a>
+    </div>
+
+    <div class="legal-footer">
+      <RouterLink to="/legal" class="legal-link">Privacy Policy & Terms of Service</RouterLink>
     </div>
 
     <!-- Clear confirm dialog -->
@@ -674,6 +741,67 @@ function clearAllData() {
   max-height: 180px;
   overflow-y: auto;
 }
+
+/* Sync Status Box */
+.sync-status-box {
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--color-surface-alt);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.sync-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+}
+.status-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+.status-dot.offline {
+  background: var(--color-danger, #e53e3e);
+  box-shadow: 0 0 8px var(--color-danger, #e53e3e);
+}
+.sync-text {
+  flex: 1;
+}
+.sync-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.sync-time {
+  font-size: 0.8rem;
+}
+.sync-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  min-height: 32px;
+}
+.w-100 { width: 100%; }
+
+.offline-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--color-danger, #e53e3e) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-danger, #e53e3e) 20%, transparent);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-danger, #e53e3e);
+}
+
 .github-footer {
   display: flex;
   justify-content: center;
@@ -689,7 +817,7 @@ function clearAllData() {
   font-weight: 700;
   padding: 0.5rem 1rem;
   border-radius: 999px;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color-scheme 0.15s;
 }
 .github-footer-link:hover {
   background: var(--color-surface-alt);
@@ -700,5 +828,16 @@ function clearAllData() {
   height: 20px;
   fill: currentColor;
   flex-shrink: 0;
+}
+.legal-footer {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 2rem;
+}
+.legal-link {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  font-weight: 600;
 }
 </style>

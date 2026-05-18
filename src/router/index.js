@@ -8,6 +8,7 @@ const routes = [
   { path: '/games',         component: () => import('../views/GamesView.vue') },
   { path: '/achievements',  component: () => import('../views/AchievementsView.vue') },
   { path: '/settings',      component: () => import('../views/SettingsView.vue') },
+  { path: '/legal',         component: () => import('../views/LegalView.vue') },
 ]
 
 export default createRouter({

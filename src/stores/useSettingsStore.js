@@ -25,6 +25,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const ttsPitch  = ref(1)    // 0.5 – 2
   const ttsRate   = ref(1)    // 0.5 – 2
 
+  // Google Drive Sync
+  const googleDriveEnabled = ref(false)
+  const googleDriveFileId  = ref(null)
+  const googleUserEmail    = ref(null)
+  const lastSyncAt         = ref(null)
+
   function updateSettings(updates) {
     if (updates.userName             !== undefined) userName.value             = updates.userName
     if (updates.avatar               !== undefined) avatar.value               = updates.avatar
@@ -47,9 +53,14 @@ export const useSettingsStore = defineStore('settings', () => {
       cardSortField.value = updates.cardSortField
     if (updates.cardSortDir !== undefined && ['asc','desc'].includes(updates.cardSortDir))
       cardSortDir.value = updates.cardSortDir
+    
+    if (updates.googleDriveEnabled !== undefined) googleDriveEnabled.value = updates.googleDriveEnabled
+    if (updates.googleDriveFileId  !== undefined) googleDriveFileId.value  = updates.googleDriveFileId
+    if (updates.googleUserEmail    !== undefined) googleUserEmail.value    = updates.googleUserEmail
+    if (updates.lastSyncAt         !== undefined) lastSyncAt.value         = updates.lastSyncAt
   }
 
-  return { userName, avatar, colorScheme, theme, questionsPerQuiz, dictionaryApiEnabled, aiApiUrl, aiApiKey, aiProvider, aiModel, aiCallsPerMinute, aiBatchSize, userAgeGroup, ttsVoice, ttsPitch, ttsRate, cardSortField, cardSortDir, updateSettings }
+  return { userName, avatar, colorScheme, theme, questionsPerQuiz, dictionaryApiEnabled, aiApiUrl, aiApiKey, aiProvider, aiModel, aiCallsPerMinute, aiBatchSize, userAgeGroup, ttsVoice, ttsPitch, ttsRate, cardSortField, cardSortDir, googleDriveEnabled, googleDriveFileId, googleUserEmail, lastSyncAt, updateSettings }
 }, {
   persist: {
     key: 'vocab-settings',
