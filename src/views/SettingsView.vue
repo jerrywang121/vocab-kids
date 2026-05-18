@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore } from '../stores/useSettingsStore'
 import { useDecksStore }    from '../stores/useDecksStore'
@@ -15,6 +15,19 @@ const cardsStore    = useCardsStore()
 const progressStore = useProgressStore()
 const { speak }     = useSpeech()
 const { isSyncing, syncError, connect, upload } = useGoogleSync()
+
+// Connectivity state
+const isOnline = ref(navigator.onLine)
+const updateOnlineStatus = () => { isOnline.value = navigator.onLine }
+
+onMounted(() => {
+  window.addEventListener('online',  updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
+})
+onUnmounted(() => {
+  window.removeEventListener('online',  updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
+})
 
 // All settings bind directly to the store — changes persist immediately
 const {
@@ -467,15 +480,20 @@ function clearAllData() {
             Automatically backup your decks and cards to your Google Drive account.
           </p>
 
+          <div v-if="!isOnline" class="offline-notice mt-1">
+            <span class="status-dot offline"></span>
+            <span>You are currently offline. Sync is unavailable.</span>
+          </div>
+
           <div v-if="!googleDriveEnabled" class="mt-1">
-            <button class="btn btn-primary w-100" @click="connect">
+            <button class="btn btn-primary w-100" @click="connect" :disabled="!isOnline">
               Connect Google Account
             </button>
           </div>
 
           <div v-else class="sync-status-box mt-1">
             <div class="sync-info">
-              <span class="status-dot online"></span>
+              <span class="status-dot" :class="isOnline ? 'online' : 'offline'"></span>
               <div class="sync-text">
                 <div class="sync-label">Google Drive Connected</div>
                 <div class="sync-time text-muted">
@@ -485,11 +503,11 @@ function clearAllData() {
             </div>
 
             <div class="sync-actions mt-2">
-              <button class="btn btn-ghost btn-sm" :disabled="isSyncing" @click="upload">
+              <button class="btn btn-ghost btn-sm" :disabled="isSyncing || !isOnline" @click="upload">
                 <span v-if="isSyncing">⏳ Syncing…</span>
                 <span v-else>🔄 Sync Now</span>
               </button>
-              <button class="btn btn-ghost btn-sm text-danger" @click="googleDriveEnabled = false">
+              <button class="btn btn-ghost btn-sm text-danger" @click="googleDriveEnabled = false" :disabled="!isOnline">
                 Disconnect
               </button>
             </div>
@@ -746,6 +764,10 @@ function clearAllData() {
   background: #10b981;
   box-shadow: 0 0 8px #10b981;
 }
+.status-dot.offline {
+  background: var(--color-danger, #e53e3e);
+  box-shadow: 0 0 8px var(--color-danger, #e53e3e);
+}
 .sync-text {
   flex: 1;
 }
@@ -766,6 +788,19 @@ function clearAllData() {
   min-height: 32px;
 }
 .w-100 { width: 100%; }
+
+.offline-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--color-danger, #e53e3e) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-danger, #e53e3e) 20%, transparent);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-danger, #e53e3e);
+}
 
 .github-footer {
   display: flex;
