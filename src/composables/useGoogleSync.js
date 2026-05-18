@@ -19,6 +19,16 @@ export function useGoogleSync() {
    * Initialize sync: Connect and do initial download/merge
    */
   async function connect() {
+    if (!navigator.onLine) {
+      syncError.value = 'You are offline. Please check your internet connection.'
+      return
+    }
+
+    if (typeof google === 'undefined') {
+      syncError.value = 'Google services are not available. This might be due to an ad-blocker or being offline.'
+      return
+    }
+
     isSyncing.value = true
     syncError.value = null
     try {
@@ -49,6 +59,7 @@ export function useGoogleSync() {
    */
   async function downloadAndMerge() {
     if (!accessToken.value || !settings.googleDriveFileId) return
+    if (!navigator.onLine) return // Silently skip if offline
     
     isSyncing.value = true
     try {
@@ -103,6 +114,7 @@ export function useGoogleSync() {
    */
   async function upload() {
     if (!accessToken.value) return
+    if (!navigator.onLine) return // Silently skip if offline
     
     isSyncing.value = true
     try {

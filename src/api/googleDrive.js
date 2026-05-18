@@ -10,23 +10,31 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.file'
  */
 export function requestAccessToken() {
   return new Promise((resolve, reject) => {
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      scope: SCOPES,
-      callback: (response) => {
-        if (response.error_description) {
-          reject(new Error(response.error_description))
-        } else if (response.access_token) {
-          resolve(response.access_token)
-        } else {
-          reject(new Error('Unknown authentication error'))
+    if (typeof google === 'undefined') {
+      return reject(new Error('Google Identity Services script not loaded'))
+    }
+
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        scope: SCOPES,
+        callback: (response) => {
+          if (response.error_description) {
+            reject(new Error(response.error_description))
+          } else if (response.access_token) {
+            resolve(response.access_token)
+          } else {
+            reject(new Error('Unknown authentication error'))
+          }
+        },
+        error_callback: (err) => {
+          reject(err)
         }
-      },
-      error_callback: (err) => {
-        reject(err)
-      }
-    })
-    client.requestAccessToken({ prompt: 'consent' })
+      })
+      client.requestAccessToken({ prompt: 'consent' })
+    } catch (err) {
+      reject(err)
+    }
   })
 }
 
@@ -101,7 +109,7 @@ export async function uploadDriveData(accessToken, fileId, data) {
  * Revoke the access token.
  */
 export function revokeToken(accessToken) {
-  if (accessToken) {
+  if (accessToken && typeof google !== 'undefined') {
     google.accounts.oauth2.revoke(accessToken, () => {
       console.log('Token revoked')
     })
