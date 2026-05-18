@@ -7,12 +7,14 @@ import { useCardsStore }    from '../stores/useCardsStore'
 import { useProgressStore } from '../stores/useProgressStore'
 import { PROVIDERS }        from '../api/providers.js'
 import { useSpeech }        from '../composables/useSpeech'
+import { useGoogleSync }    from '../composables/useGoogleSync'
 
 const settings      = useSettingsStore()
 const decksStore    = useDecksStore()
 const cardsStore    = useCardsStore()
 const progressStore = useProgressStore()
 const { speak }     = useSpeech()
+const { isSyncing, syncError, connect, upload } = useGoogleSync()
 
 // All settings bind directly to the store — changes persist immediately
 const {
@@ -20,6 +22,7 @@ const {
   questionsPerQuiz, dictionaryApiEnabled, userAgeGroup,
   ttsVoice, ttsPitch, ttsRate,
   aiProvider, aiApiKey, aiApiUrl, aiModel, aiCallsPerMinute, aiBatchSize,
+  googleDriveEnabled, lastSyncAt,
 } = storeToRefs(settings)
 
 const AGE_GROUPS = [
@@ -456,6 +459,48 @@ function clearAllData() {
         </div>
       </details>
 
+      <!-- Google Drive Sync -->
+      <details class="settings-section card-surface" :open="openPanel === 'sync'" @toggle.prevent>
+        <summary class="section-summary" @click.prevent="togglePanel('sync')">☁️ Backup & Sync</summary>
+        <div class="section-body">
+          <p class="text-muted" style="font-size:0.9rem;">
+            Automatically backup your decks and cards to your Google Drive account.
+          </p>
+
+          <div v-if="!googleDriveEnabled" class="mt-1">
+            <button class="btn btn-primary w-100" @click="connect">
+              Connect Google Account
+            </button>
+          </div>
+
+          <div v-else class="sync-status-box mt-1">
+            <div class="sync-info">
+              <span class="status-dot online"></span>
+              <div class="sync-text">
+                <div class="sync-label">Google Drive Connected</div>
+                <div class="sync-time text-muted">
+                  Last sync: {{ lastSyncAt ? new Date(lastSyncAt).toLocaleString() : 'Never' }}
+                </div>
+              </div>
+            </div>
+
+            <div class="sync-actions mt-2">
+              <button class="btn btn-ghost btn-sm" :disabled="isSyncing" @click="upload">
+                <span v-if="isSyncing">⏳ Syncing…</span>
+                <span v-else>🔄 Sync Now</span>
+              </button>
+              <button class="btn btn-ghost btn-sm text-danger" @click="googleDriveEnabled = false">
+                Disconnect
+              </button>
+            </div>
+          </div>
+
+          <div v-if="syncError" class="models-msg msg-error mt-1">
+            ❌ {{ syncError }}
+          </div>
+        </div>
+      </details>
+
     </div>
 
     <!-- Data management -->
@@ -674,6 +719,50 @@ function clearAllData() {
   max-height: 180px;
   overflow-y: auto;
 }
+
+/* Sync Status Box */
+.sync-status-box {
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--color-surface-alt);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.sync-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+}
+.status-dot.online {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+.sync-text {
+  flex: 1;
+}
+.sync-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.sync-time {
+  font-size: 0.8rem;
+}
+.sync-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  min-height: 32px;
+}
+.w-100 { width: 100%; }
+
 .github-footer {
   display: flex;
   justify-content: center;
@@ -689,7 +778,7 @@ function clearAllData() {
   font-weight: 700;
   padding: 0.5rem 1rem;
   border-radius: 999px;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color-scheme 0.15s;
 }
 .github-footer-link:hover {
   background: var(--color-surface-alt);
