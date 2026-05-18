@@ -93,7 +93,9 @@ onMounted(() => {
         <div class="mode-desc text-muted">Customise your profile &amp; preferences</div>
       </RouterLink>
     </div>
-
+    <div class="home-footer mt-3">
+      <RouterLink to="/legal" class="legal-link">Privacy Policy & Terms of Service</RouterLink>
+    </div>
   </main>
 </template>
 
@@ -140,4 +142,15 @@ onMounted(() => {
 .mode-icon  { font-size: 2rem; }
 .mode-name  { font-family: 'Fredoka One', cursive; font-size: 1.2rem; color: var(--color-primary); }
 .mode-desc  { font-size: 0.85rem; }
+.home-footer {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 1.5rem;
+}
+.legal-link {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  font-weight: 600;
+}
 </style>
