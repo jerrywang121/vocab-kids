@@ -536,6 +536,10 @@ function clearAllData() {
       </a>
     </div>
 
+    <div class="legal-footer">
+      <RouterLink to="/legal" class="legal-link">Privacy Policy & Terms of Service</RouterLink>
+    </div>
+
     <!-- Clear confirm dialog -->
     <div v-if="showClearConfirm" class="modal-backdrop" @click.self="showClearConfirm = false">
       <div class="modal card-surface">
@@ -789,5 +793,16 @@ function clearAllData() {
   height: 20px;
   fill: currentColor;
   flex-shrink: 0;
+}
+.legal-footer {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 2rem;
+}
+.legal-link {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  font-weight: 600;
 }
 </style>
