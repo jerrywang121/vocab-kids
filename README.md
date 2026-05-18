@@ -6,11 +6,10 @@
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa)](https://jerrywang121.github.io/vocab-kids/)
 [![GitHub](https://img.shields.io/badge/GitHub-jerrywang121%2Fvocab--kids-181717?logo=github)](https://github.com/jerrywang121/vocab-kids)
 
-> A browser-based English vocabulary flashcard app for kids — runs entirely offline, no account needed.
 
-VocabKids lets children (and their parents/teachers) build custom word decks, practise with animated flashcards, test their knowledge with auto-generated quizzes, and play word games. Everything runs in the browser and persists in `localStorage` — no server, no sign-up.
+VocabKids lets children (and their parents/teachers) easily build custom word decks with the help of AI, practise with animated flashcards, test their knowledge with auto-generated quizzes, and play word games. Everything runs in the browser and persists in `localStorage` — no server, no sign-up.
 
-*blah blah blah ... OK, it is for my son, who is doing 11+, having 1000+ words on his list that he seems never want to look at. Built this to help him "gaming" on it... hope it works. If you have the same experience, feel free to [try it out](https://jerrywang121.github.io/vocab-kids/)!*
+> *... OK, it is for my son, who is doing 11+, having 1000+ words on his list that he seems never want to look at. Built this to help him "gaming" on it... hope it works. If you have the same experience, feel free to [try it out](https://jerrywang121.github.io/vocab-kids/)!*
 
 ---
 
@@ -35,6 +34,7 @@ VocabKids lets children (and their parents/teachers) build custom word decks, pr
 - **Dark mode** — light / dark / auto (follows OS preference)
 - **5 colour themes** — Pink, Blue, Green, Purple, Orange
 - **Import / Export** — back up and restore all data as a single JSON file
+- **Cloud Backup & Sync** — connect your Google account to automatically back up data to Google Drive and keep multiple devices in sync
 - **Bulk word import** — paste a plain text list or upload a `.txt` / `.csv` / `.json` file
 
 ---
@@ -78,6 +78,19 @@ Works offline once installed. All data stays on-device via `localStorage`.
 
 ---
 
+## ☁️ Google Drive Sync Setup
+
+To enable the Google Drive backup feature in your own deployment:
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new project and enable the **Google Drive API**.
+3. Configure the **OAuth Consent Screen** (External) and add the `.../auth/drive.file` scope.
+4. Create an **OAuth 2.0 Client ID** for a **Web Application**.
+5. Add your domain (e.g., `http://localhost:5173`) to **Authorized JavaScript origins**.
+6. Set your Client ID as `VITE_GOOGLE_CLIENT_ID` in your `.env` file or GitHub Secrets.
+
+---
+
 ## 🗂️ Project Structure
 
 ```
@@ -106,12 +119,13 @@ lingokids-local/
 │   │   └── SettingsView.vue
 │   ├── components/       # reusable UI components
 │   ├── composables/
-│   │   ├── useEnrich.js  # dictionary → AI enrichment pipeline
-│   │   └── useSpeech.js  # Web Speech API wrapper
+│   │   ├── useGoogleSync.js # google drive sync up
+│   │   └── useSpeech.js     # Web Speech API wrapper
 │   ├── api/
-│   │   ├── dictionary.js # dictionaryapi.dev wrapper
-│   │   ├── ai.js         # enrich / convert / quiz / listModels
-│   │   └── providers.js  # registry of 17+ AI provider configs
+│   │   ├── dictionary.js   # dictionaryapi.dev wrapper
+│   │   ├── ai.js           # enrich / convert / quiz / listModels
+│   │   ├── providers.js    # registry of 17+ AI provider configs
+│   │   └── googleDrive.js  # Wrapper for Google Drive and GIS API
 │   ├── quiz/
 │   │   ├── generator.js  # score-weighted quiz session builder
 │   │   └── types.js      # question factories
