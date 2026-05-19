@@ -11,12 +11,12 @@ VocabKids lets children (and their parents/teachers) easily build custom word de
 
 > *... OK, it is for my son, who is doing 11+, having 1000+ words on his list that he seems never want to look at. Built this to help him "gaming" on it... hope it works. If you have the same experience, feel free to [try it out](https://jerrywang121.github.io/vocab-kids/)!*
 
-<img width="200" height="427" alt="Image" src="https://github.com/user-attachments/assets/05b1d320-e8d2-4d04-8628-b1b0b35b45c0" />
-<img width="200" height="427" alt="Image" src="https://github.com/user-attachments/assets/c9eb8f94-bd9d-4326-bcdb-eea7ba1be0ab" />
-<img width="200" height="427" alt="Image" src="https://github.com/user-attachments/assets/17322752-96ea-40f0-8610-daa62556b6b8" />
-<img width="200" height="427" alt="Image" src="https://github.com/user-attachments/assets/5d428a49-a93c-42f1-bf0f-29be8443ff42" />
-<img width="200" height="427" alt="Image" src="https://github.com/user-attachments/assets/fafebb4f-82bf-4b3b-b5aa-b305e756a9d1" />
-<img width="200" height="427" alt="Image" src="https://github.com/user-attachments/assets/43bf6333-02de-460f-9522-7d1077c44584" />
+<img width="300" height="640" alt="Image" src="https://github.com/user-attachments/assets/05b1d320-e8d2-4d04-8628-b1b0b35b45c0" />
+<img width="300" height="640" alt="Image" src="https://github.com/user-attachments/assets/c9eb8f94-bd9d-4326-bcdb-eea7ba1be0ab" />
+<img width="300" height="640" alt="Image" src="https://github.com/user-attachments/assets/17322752-96ea-40f0-8610-daa62556b6b8" />
+<img width="300" height="640" alt="Image" src="https://github.com/user-attachments/assets/5d428a49-a93c-42f1-bf0f-29be8443ff42" />
+<img width="300" height="640" alt="Image" src="https://github.com/user-attachments/assets/fafebb4f-82bf-4b3b-b5aa-b305e756a9d1" />
+<img width="300" height="640" alt="Image" src="https://github.com/user-attachments/assets/43bf6333-02de-460f-9522-7d1077c44584" />
 
 ---
 
