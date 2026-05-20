@@ -402,14 +402,22 @@ abundant,present in large quantities,adjective,plentiful;ample,scarce;rare,The f
         >
           <div class="card-row-main">
             <div>
-              <span class="card-word">{{ card.word }}</span>
+              <a class="card-word" :href="`https://www.google.com/search?q=${encodeURIComponent(card.word + ' definition')}`" target="_blank" rel="noopener">{{ card.word }}</a>
               <span v-if="card.partOfSpeech" class="pos-badge">{{ card.partOfSpeech }}</span>
             </div>
             <p class="card-def text-muted">{{ card.definition }}</p>
             <p v-if="card.exampleSentence" class="card-example text-muted">"{{ card.exampleSentence }}"</p>
             <div v-if="card.synonyms?.length || card.antonyms?.length" class="tag-row">
-              <span v-if="card.synonyms?.length" class="tag syn">↑ {{ card.synonyms.slice(0,4).join(', ') }}</span>
-              <span v-if="card.antonyms?.length" class="tag ant">↓ {{ card.antonyms.slice(0,4).join(', ') }}</span>
+              <span v-if="card.synonyms?.length" class="tag syn">↑
+                <template v-for="(w, i) in card.synonyms.slice(0,4)" :key="w">
+                  <a :href="`https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`" target="_blank" rel="noopener" class="tag-link">{{ w }}</a><template v-if="i < Math.min(card.synonyms.length, 4) - 1">, </template>
+                </template>
+              </span>
+              <span v-if="card.antonyms?.length" class="tag ant">↓
+                <template v-for="(w, i) in card.antonyms.slice(0,4)" :key="w">
+                  <a :href="`https://www.google.com/search?q=${encodeURIComponent(w + ' definition')}`" target="_blank" rel="noopener" class="tag-link">{{ w }}</a><template v-if="i < Math.min(card.antonyms.length, 4) - 1">, </template>
+                </template>
+              </span>
             </div>
             <div v-if="card.forms && Object.keys(card.forms).length" class="forms-row">
               <span v-for="(val, key) in card.forms" :key="key" class="form-tag">
@@ -513,7 +521,8 @@ abundant,present in large quantities,adjective,plentiful;ample,scarce;rare,The f
 }
 .card-row-main { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
 .card-row-actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
-.card-word { font-weight: 800; font-size: 1.05rem; }
+.card-word { font-weight: 800; font-size: 1.05rem; color: var(--color-primary); text-decoration: none; }
+.card-word:hover { text-decoration: underline; }
 .pos-badge {
   display: inline-block;
   margin-left: 0.5rem;
@@ -546,6 +555,8 @@ abundant,present in large quantities,adjective,plentiful;ample,scarce;rare,The f
 }
 .syn { background: #e8f5e9; color: #2e7d32; }
 .ant { background: #fce4ec; color: #c62828; }
+.tag-link { color: inherit; text-decoration: none; }
+.tag-link:hover { text-decoration: underline; }
 .forms-row { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.2rem; }
 .form-tag {
   font-size: 0.72rem;
