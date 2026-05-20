@@ -29,7 +29,7 @@ export function definitionQuestion(card, allCards) {
 
   const choices = shuffle([
     maskWord(card.definition, card.word),
-    ...distractors.map(c => maskWord(c.definition, card.word)),
+    ...distractors.map(c => maskWord(c.definition, c.word)),
   ])
   const maskedCorrect = maskWord(card.definition, card.word)
   return {
@@ -53,12 +53,16 @@ export function synonymQuestion(card, allCards) {
   if (!useSynonyms && !useAntonyms) return null
 
   let correctAnswer, questionLabel
-  if (useSynonyms && (!useAntonyms || Math.random() < 0.5)) {
-    correctAnswer = card.synonyms[Math.floor(Math.random() * card.synonyms.length)]
+  const synonyms = useSynonyms? card.synonyms.filter(s => !s.includes(card.word)):null
+  const antonyms = useAntonyms? card.antonyms.filter(a => !a.includes(card.word)):null
+  if (synonyms && (!useAntonyms || Math.random() < 0.5)) {
+    correctAnswer = synonyms[Math.floor(Math.random() * synonyms.length)]
     questionLabel = 'Which word means the SAME as:'
-  } else {
-    correctAnswer = card.antonyms[Math.floor(Math.random() * card.antonyms.length)]
+  } else if (antonyms) {
+    correctAnswer = antonyms[Math.floor(Math.random() * antonyms.length)]
     questionLabel = 'Which word means the OPPOSITE of:'
+  } else {
+    return null
   }
 
   // Distractors: words from other cards' synonyms/antonyms, or the words themselves
