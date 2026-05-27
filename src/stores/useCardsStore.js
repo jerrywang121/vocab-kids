@@ -9,12 +9,12 @@ export const useCardsStore = defineStore('cards', () => {
     return cards.value.filter(c => c.deckId === deckId)
   }
 
-  /** Count of cards with a unique word + partOfSpeech combination in a deck */
+  /** Count of cards with a unique word combination in a deck */
   function uniqueCardCount(deckId) {
     const seen = new Set()
     for (const c of cards.value) {
       if (c.deckId !== deckId) continue
-      seen.add(`${c.word.trim().toLowerCase()}|${(c.partOfSpeech ?? '').trim().toLowerCase()}`)
+      seen.add(`${c.word.trim().toLowerCase()}`)
     }
     return seen.size
   }

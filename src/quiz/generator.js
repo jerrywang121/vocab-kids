@@ -20,10 +20,10 @@ export function buildQuiz(cards, deckId, questionCount = 30, scoreOf = null) {
     return sa - sb + (Math.random() - 0.5) * 0.2  // add some jitter for variety
   })
 
-  // extract cards with unique word and partOfSpeech to ensure we have enough distinct options for questions
+  // extract cards with unique word to ensure we have enough distinct options for questions
   const uniqueCards = new Map()
   for (const card of shuffled) {
-    const key = `${card.word}-${card.partOfSpeech}`
+    const key = `${card.word}`
     if (!uniqueCards.has(key)) {
       uniqueCards.set(key, card)
     }
