@@ -251,7 +251,7 @@ body.dark .choice-btn.wrong   { background: #3a1a1a !important; color: #ef9a9a !
 }
 .session-header { display: flex; align-items: center; justify-content: space-between; }
 .progress-text { font-size: 0.9rem; font-weight: 700; }
-.question-card { display: flex; flex-direction: column; gap: 0.5rem; }
+.question-card { display: flex; flex-direction: column; gap: 0.5rem; user-select: none; }
 .q-label { font-size: 0.85rem; }
 .q-prompt { font-family: 'Fredoka One', cursive; font-size: 1.5rem; color: var(--color-primary); line-height: 1.3; }
 .q-pos { font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--color-text-muted); opacity: 0.75; }
