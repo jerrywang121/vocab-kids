@@ -461,6 +461,7 @@ abundant,present in large quantities,adjective,plentiful;ample,scarce;rare,The f
       :model-value="editingCard"
       :deck-id="activeDeck?.id ?? ''"
       :loading="cardLoading"
+      :initial-word="cardSearch"
       @save="saveCard"
       @save-many="saveManyCards"
       @cancel="showCardForm = false"

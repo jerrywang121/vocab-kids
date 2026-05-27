@@ -7,6 +7,7 @@ const props = defineProps({
   modelValue: { type: Object, default: null }, // null = create mode
   deckId: { type: String, required: true },
   loading: { type: Boolean, default: false },
+  initialWord: { type: String, default: '' },
 })
 const emit = defineEmits(['update:modelValue', 'save', 'save-many', 'cancel'])
 
@@ -14,7 +15,8 @@ const settings   = useSettingsStore()
 const cardsStore = useCardsStore()
 
 const EMPTY = () => ({
-  word: '', partOfSpeech: '', definition: '',
+  word: props.initialWord || '',
+  partOfSpeech: '', definition: '',
   synonyms: '', antonyms: '', exampleSentence: '',
   forms: {},
 })
