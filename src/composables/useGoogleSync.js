@@ -9,6 +9,7 @@ import * as drive from '../api/googleDrive'
 const accessToken = ref(null)
 const isSyncing = ref(false)
 const syncError = ref(null)
+const syncConflict = ref(null) // { remoteData, remoteTime, localTime }
 
 export function useGoogleSync() {
   const decksStore = useDecksStore()
@@ -40,7 +41,8 @@ export function useGoogleSync() {
       let file = await drive.findBackupFile(token)
       if (file) {
         settings.updateSettings({ googleDriveFileId: file.id, googleDriveEnabled: true })
-        await downloadAndMerge(true) // Pass true to avoid infinite loop or redundant checks
+        // Use the new sync logic after connecting
+        await sync(true)
       } else {
         // First time backup: upload current local state
         await upload(true)
@@ -56,14 +58,14 @@ export function useGoogleSync() {
   }
 
   /**
-   * Download from Drive and merge with local state
+   * Main sync entry point: Check for conflicts then merge/upload
    */
-  async function downloadAndMerge(hasToken = false) {
+  async function sync(hasToken = false) {
     if (!settings.googleDriveEnabled) return
     if (!navigator.onLine) return
     
     if (!accessToken.value && !hasToken) {
-      return connect() // Try to connect if token is missing
+      return connect()
     }
     
     const token = accessToken.value
@@ -71,8 +73,9 @@ export function useGoogleSync() {
 
     isSyncing.value = true
     syncError.value = null
+    syncConflict.value = null
+
     try {
-      // Ensure we have a file ID
       let fileId = settings.googleDriveFileId
       if (!fileId) {
         const file = await drive.findBackupFile(token)
@@ -80,38 +83,75 @@ export function useGoogleSync() {
           fileId = file.id
           settings.updateSettings({ googleDriveFileId: fileId })
         } else {
-          // No backup found on drive, nothing to download
+          // No backup on drive, just upload local
+          await upload(true)
           return
         }
       }
 
       const remoteData = await drive.fetchDriveData(token, fileId)
-      
-      // Merge logic
-      if (remoteData.decks) {
-        for (const deck of remoteData.decks) {
-          const exists = decksStore.decks.find(d => d.id === deck.id)
-          if (!exists) decksStore.addDeck(deck)
-          else decksStore.updateDeck(deck.id, deck)
+      const remoteTime = remoteData.exportedAt ? new Date(remoteData.exportedAt) : new Date(0)
+      const localTime  = settings.lastSyncAt ? new Date(settings.lastSyncAt) : new Date(0)
+
+      // Add a small buffer (1s) to avoid micro-second precision issues
+      if (remoteTime.getTime() > localTime.getTime() + 1000) {
+        // Conflict detected
+        syncConflict.value = {
+          remoteData,
+          remoteTime: remoteData.exportedAt,
+          localTime: settings.lastSyncAt
         }
+      } else {
+        // Local is newer or equal, just upload
+        await upload(true)
       }
-      
-      if (remoteData.cards) {
-        for (const card of remoteData.cards) {
-          const exists = cardsStore.cards.find(c => c.id === card.id)
-          if (!exists) cardsStore.addCard(card)
-          else cardsStore.updateCard(card.id, card)
-        }
-      }
-      
-      if (remoteData.progress) {
-        mergeProgress(remoteData.progress)
-      }
-      
-      settings.updateSettings({ lastSyncAt: new Date().toISOString() })
     } catch (err) {
       syncError.value = err.message
-      console.error('Download error:', err)
+      console.error('Sync error:', err)
+    } finally {
+      isSyncing.value = false
+    }
+  }
+
+  /**
+   * Handle user choice for sync conflict
+   */
+  async function resolveConflict(action) {
+    if (!syncConflict.value) return
+    
+    const { remoteData } = syncConflict.value
+    syncConflict.value = null // Clear conflict state immediately
+    isSyncing.value = true
+
+    try {
+      if (action === 'merge') {
+        // 1. Merge remote into local
+        if (remoteData.decks) {
+          for (const deck of remoteData.decks) {
+            const exists = decksStore.decks.find(d => d.id === deck.id)
+            if (!exists) decksStore.addDeck(deck)
+            else decksStore.updateDeck(deck.id, deck)
+          }
+        }
+        if (remoteData.cards) {
+          for (const card of remoteData.cards) {
+            const exists = cardsStore.cards.find(c => c.id === card.id)
+            if (!exists) cardsStore.addCard(card)
+            else cardsStore.updateCard(card.id, card)
+          }
+        }
+        if (remoteData.progress) {
+          mergeProgress(remoteData.progress)
+        }
+        // 2. Upload merged state
+        await upload(true)
+      } else if (action === 'overwrite') {
+        // Just upload current local state
+        await upload(true)
+      }
+      // 'cancel' action just exits as conflict was already cleared
+    } catch (err) {
+      syncError.value = err.message
     } finally {
       isSyncing.value = false
     }
@@ -140,7 +180,9 @@ export function useGoogleSync() {
     if (!navigator.onLine) return
     
     if (!accessToken.value && !hasToken) {
-      return connect() // Try to connect if token is missing
+      // For manual calls, we might want to connect, but for auto-sync we shouldn't
+      if (hasToken) return connect() 
+      return
     }
 
     const token = accessToken.value
@@ -171,6 +213,7 @@ export function useGoogleSync() {
     } catch (err) {
       syncError.value = err.message
       console.error('Upload error:', err)
+      throw err // Re-throw to be caught by sync/resolveConflict
     } finally {
       isSyncing.value = false
     }
@@ -189,6 +232,7 @@ export function useGoogleSync() {
     }
     accessToken.value = null
     syncError.value = null
+    syncConflict.value = null
     settings.updateSettings({ 
       googleDriveEnabled: false, 
       googleDriveFileId: null,
@@ -202,12 +246,15 @@ export function useGoogleSync() {
   function scheduleUpload() {
     // Auto-sync only works if we already have a token
     // We don't want to pop up login windows automatically
-    if (!settings.googleDriveEnabled || !accessToken.value) return
+    // Also skip if there's an active conflict being shown
+    if (!settings.googleDriveEnabled || !accessToken.value || syncConflict.value) return
     
     if (uploadTimeout) clearTimeout(uploadTimeout)
     uploadTimeout = setTimeout(() => {
-      upload(true)
-    }, 10000) // Debounce 10 seconds for auto-sync
+      // Auto-sync doesn't check for conflicts to keep it lightweight, 
+      // it assumes manual sync has resolved them.
+      upload(true).catch(() => {}) 
+    }, 15000) // Debounce 15 seconds for auto-sync
   }
 
   // Watch for data changes across stores
@@ -219,9 +266,11 @@ export function useGoogleSync() {
     accessToken,
     isSyncing,
     syncError,
+    syncConflict,
     connect,
+    sync,
     upload,
     disconnect,
-    downloadAndMerge
+    resolveConflict
   }
 }
