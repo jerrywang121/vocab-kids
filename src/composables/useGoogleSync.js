@@ -10,6 +10,8 @@ const isSyncing = ref(false)
 const syncError = ref(null)
 const syncConflict = ref(null) // { remoteData, remoteTime, localTime }
 
+const autoSync = ref(true)
+
 export function useGoogleSync() {
   const decksStore = useDecksStore()
   const cardsStore = useCardsStore()
@@ -50,8 +52,12 @@ export function useGoogleSync() {
     syncError.value = null
     try {
       // If we're already connected and have a valid token, just return it
-      if (accessToken.value && !options.force) {
+      if (accessToken.value) {
         return accessToken.value
+      }
+      // if no existing token, and not required to force connect, just return
+      if (!options.force){
+        return
       }
 
       // Default to forcing consent if not explicitly suppressed
@@ -69,18 +75,10 @@ export function useGoogleSync() {
       })
       
       // Find or create backup file
-      let file = await drive.findBackupFile(token)
-      if (file) {
-        settings.updateSettings({ googleDriveFileId: file.id })
-        // Use the new sync logic after connecting
-        await sync(true)
-      } else {
-        // First time backup: upload current local state
-        await upload(true)
-        file = await drive.findBackupFile(token)
-        if (file) settings.updateSettings({ googleDriveFileId: file.id })
+      if (!options.skipSync) {
+        await sync(options)
       }
-      
+
       return token
     } catch (err) {
       syncError.value = err.message
@@ -94,7 +92,7 @@ export function useGoogleSync() {
   /**
    * Main sync entry point: Check for conflicts then merge/upload
    */
-  async function sync(hasToken = false) {
+  async function sync(options = {}) {
     if (!settings.googleDriveEnabled) return
     if (!navigator.onLine) return
     
@@ -102,9 +100,9 @@ export function useGoogleSync() {
     if (!token) {
       // Try to connect silently if we were already enabled
       try {
-        token = await connect({ prompt: '', force: true })
-      } catch (e) {
-        // Silent connect failed, maybe user needs to interact
+        token = await connect({ prompt: '', force: options.force, skipSync: true })
+      } catch (err) {
+        // Silent connect failed, maybe user needs to interact, syncError is updated in connect()
         return
       }
     }
@@ -118,13 +116,15 @@ export function useGoogleSync() {
     try {
       let fileId = settings.googleDriveFileId
       if (!fileId) {
-        const file = await drive.findBackupFile(token)
+        let file = await drive.findBackupFile(token)
         if (file) {
           fileId = file.id
           settings.updateSettings({ googleDriveFileId: fileId })
         } else {
           // No backup on drive, just upload local
-          await upload(true)
+          await upload()
+          file = await drive.findBackupFile(token)
+          if (file) settings.updateSettings({ googleDriveFileId: file.id })
           return
         }
       }
@@ -136,6 +136,12 @@ export function useGoogleSync() {
       // Add a small buffer (1s) to avoid micro-second precision issues
       if (remoteTime.getTime() > localTime.getTime() + 1000) {
         // Conflict detected
+        if (!options.force){
+          // not force sync, e.g. auto sync, just show error message
+          syncError.value = "Newer data was found on Google Drive:" + new Date(remoteTime).toLocaleString() + ". Auto-Sync suspended!"
+          autoSync.value = false
+          return
+        }
         syncConflict.value = {
           remoteData,
           remoteTime: remoteData.exportedAt,
@@ -143,7 +149,7 @@ export function useGoogleSync() {
         }
       } else {
         // Local is newer or equal, just upload
-        await upload(true)
+        await upload()
       }
     } catch (err) {
       syncError.value = err.message
@@ -184,10 +190,10 @@ export function useGoogleSync() {
           mergeProgress(remoteData.progress)
         }
         // 2. Upload merged state
-        await upload(true)
+        await upload()
       } else if (action === 'overwrite') {
         // Just upload current local state
-        await upload(true)
+        await upload()
       }
       // 'cancel' action just exits as conflict was already cleared
     } catch (err) {
@@ -215,16 +221,13 @@ export function useGoogleSync() {
   /**
    * Upload current local state to Drive
    */
-  async function upload(hasToken = false) {
+  async function upload() {
     if (!settings.googleDriveEnabled) return
     if (!navigator.onLine) return
     
     let token = accessToken.value
     if (!token) {
       // If we don't have a token, we can't upload in background.
-      // If it's a manual sync (hasToken is true but actually refers to 'skip check' in my previous code)
-      // Wait, in previous code I used hasToken=true to mean "skip re-auth check".
-      // Let's fix the parameter name to 'manual'
       return
     }
 
@@ -286,11 +289,11 @@ export function useGoogleSync() {
   let uploadTimeout = null
 
   function scheduleUpload() {
-    if (!settings.googleDriveEnabled || !accessToken.value || syncConflict.value) return
+    if (!settings.googleDriveEnabled || !accessToken.value || syncConflict.value || !autoSync.value) return
     
     if (uploadTimeout) clearTimeout(uploadTimeout)
     uploadTimeout = setTimeout(() => {
-      upload().catch(() => {}) 
+      sync().catch(() => {}) 
     }, 15000) // Debounce 15 seconds for auto-sync
   }
 
@@ -306,7 +309,6 @@ export function useGoogleSync() {
     syncConflict,
     connect,
     sync,
-    upload,
     disconnect,
     resolveConflict
   }

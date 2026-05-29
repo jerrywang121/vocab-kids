@@ -513,7 +513,7 @@ function clearAllData() {
           </div>
 
           <div v-if="!googleDriveEnabled" class="mt-1">
-            <button class="btn btn-primary w-100" @click="connect" :disabled="!isOnline">
+            <button class="btn btn-primary w-100" @click="connect({force: true})" :disabled="!isOnline">
               Connect Google Account
             </button>
           </div>
@@ -530,7 +530,7 @@ function clearAllData() {
             </div>
 
             <div class="sync-actions mt-2">
-              <button class="btn btn-ghost btn-sm" :disabled="isSyncing || !isOnline" @click="syncNow">
+              <button class="btn btn-ghost btn-sm" :disabled="isSyncing || !isOnline" @click="syncNow({force: true})">
                 <span v-if="isSyncing">⏳ Syncing…</span>
                 <span v-else>🔄 Sync Now</span>
               </button>

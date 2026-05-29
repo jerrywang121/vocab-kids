@@ -22,9 +22,7 @@ onMounted(()   => {
     // We wait a bit for GIS script to be ready
     setTimeout(() => {
       if (typeof google !== 'undefined') {
-        // connect() // Note: Auto-connect might trigger a popup, which can be annoying on every refresh.
-        // Usually, we only connect when the user clicks. 
-        // But the watchers in useGoogleSync are already active if we called useGoogleSync().
+         connect() // Note: Auto-connect without force
       }
     }, 2000)
   }
