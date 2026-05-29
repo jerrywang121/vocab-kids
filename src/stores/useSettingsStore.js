@@ -26,10 +26,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const ttsRate   = ref(1)    // 0.5 – 2
 
   // Google Drive Sync
-  const googleDriveEnabled = ref(false)
-  const googleDriveFileId  = ref(null)
-  const googleUserEmail    = ref(null)
-  const lastSyncAt         = ref(null)
+  const googleDriveEnabled   = ref(false)
+  const googleDriveFileId    = ref(null)
+  const googleUserEmail      = ref(null)
+  const googleAccessToken    = ref(null)
+  const googleTokenExpiresAt = ref(null) // Timestamp in ms
+  const lastSyncAt           = ref(null)
 
   function updateSettings(updates) {
     if (updates.userName             !== undefined) userName.value             = updates.userName
@@ -54,13 +56,21 @@ export const useSettingsStore = defineStore('settings', () => {
     if (updates.cardSortDir !== undefined && ['asc','desc'].includes(updates.cardSortDir))
       cardSortDir.value = updates.cardSortDir
     
-    if (updates.googleDriveEnabled !== undefined) googleDriveEnabled.value = updates.googleDriveEnabled
-    if (updates.googleDriveFileId  !== undefined) googleDriveFileId.value  = updates.googleDriveFileId
-    if (updates.googleUserEmail    !== undefined) googleUserEmail.value    = updates.googleUserEmail
-    if (updates.lastSyncAt         !== undefined) lastSyncAt.value         = updates.lastSyncAt
+    if (updates.googleDriveEnabled   !== undefined) googleDriveEnabled.value   = updates.googleDriveEnabled
+    if (updates.googleDriveFileId    !== undefined) googleDriveFileId.value    = updates.googleDriveFileId
+    if (updates.googleUserEmail      !== undefined) googleUserEmail.value      = updates.googleUserEmail
+    if (updates.googleAccessToken    !== undefined) googleAccessToken.value    = updates.googleAccessToken
+    if (updates.googleTokenExpiresAt !== undefined) googleTokenExpiresAt.value = updates.googleTokenExpiresAt
+    if (updates.lastSyncAt           !== undefined) lastSyncAt.value           = updates.lastSyncAt
   }
 
-  return { userName, avatar, colorScheme, theme, questionsPerQuiz, dictionaryApiEnabled, aiApiUrl, aiApiKey, aiProvider, aiModel, aiCallsPerMinute, aiBatchSize, userAgeGroup, ttsVoice, ttsPitch, ttsRate, cardSortField, cardSortDir, googleDriveEnabled, googleDriveFileId, googleUserEmail, lastSyncAt, updateSettings }
+  return { 
+    userName, avatar, colorScheme, theme, questionsPerQuiz, dictionaryApiEnabled, 
+    aiApiUrl, aiApiKey, aiProvider, aiModel, aiCallsPerMinute, aiBatchSize, 
+    userAgeGroup, ttsVoice, ttsPitch, ttsRate, cardSortField, cardSortDir, 
+    googleDriveEnabled, googleDriveFileId, googleUserEmail, 
+    googleAccessToken, googleTokenExpiresAt, lastSyncAt, updateSettings 
+  }
 }, {
   persist: {
     key: 'vocab-settings',

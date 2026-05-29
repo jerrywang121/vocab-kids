@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useDecksStore } from '../stores/useDecksStore'
 import { useCardsStore } from '../stores/useCardsStore'
 import { useProgressStore } from '../stores/useProgressStore'
@@ -6,7 +6,6 @@ import { useSettingsStore } from '../stores/useSettingsStore'
 import * as drive from '../api/googleDrive'
 
 // Shared state across all instances of the composable
-const accessToken = ref(null)
 const isSyncing = ref(false)
 const syncError = ref(null)
 const syncConflict = ref(null) // { remoteData, remoteTime, localTime }
@@ -17,10 +16,26 @@ export function useGoogleSync() {
   const progressStore = useProgressStore()
   const settings = useSettingsStore()
 
+  // Token is managed in the store for persistence across refreshes
+  const accessToken = computed({
+    get: () => {
+      // Check if token exists and is not expired
+      if (settings.googleAccessToken && settings.googleTokenExpiresAt) {
+        if (Date.now() < settings.googleTokenExpiresAt) {
+          return settings.googleAccessToken
+        }
+      }
+      return null
+    },
+    set: (val) => {
+      // Handled by updateSettings inside connect
+    }
+  })
+
   /**
    * Initialize sync: Connect and do initial download/merge
    */
-  async function connect() {
+  async function connect(options = {}) {
     if (!navigator.onLine) {
       syncError.value = 'You are offline. Please check your internet connection.'
       return
@@ -34,24 +49,43 @@ export function useGoogleSync() {
     isSyncing.value = true
     syncError.value = null
     try {
-      const token = await drive.requestAccessToken()
-      accessToken.value = token
+      // If we're already connected and have a valid token, just return it
+      if (accessToken.value && !options.force) {
+        return accessToken.value
+      }
+
+      // Default to forcing consent if not explicitly suppressed
+      const requestOptions = {
+        prompt: options.prompt !== undefined ? options.prompt : 'consent'
+      }
+
+      const { token, expiresIn } = await drive.requestAccessToken(requestOptions)
+      const expiresAt = Date.now() + (expiresIn * 1000)
+      
+      settings.updateSettings({ 
+        googleAccessToken: token, 
+        googleTokenExpiresAt: expiresAt,
+        googleDriveEnabled: true 
+      })
       
       // Find or create backup file
       let file = await drive.findBackupFile(token)
       if (file) {
-        settings.updateSettings({ googleDriveFileId: file.id, googleDriveEnabled: true })
+        settings.updateSettings({ googleDriveFileId: file.id })
         // Use the new sync logic after connecting
         await sync(true)
       } else {
         // First time backup: upload current local state
         await upload(true)
         file = await drive.findBackupFile(token)
-        if (file) settings.updateSettings({ googleDriveFileId: file.id, googleDriveEnabled: true })
+        if (file) settings.updateSettings({ googleDriveFileId: file.id })
       }
+      
+      return token
     } catch (err) {
       syncError.value = err.message
       console.error('Google Sync Error:', err)
+      throw err
     } finally {
       isSyncing.value = false
     }
@@ -64,11 +98,17 @@ export function useGoogleSync() {
     if (!settings.googleDriveEnabled) return
     if (!navigator.onLine) return
     
-    if (!accessToken.value && !hasToken) {
-      return connect()
+    let token = accessToken.value
+    if (!token) {
+      // Try to connect silently if we were already enabled
+      try {
+        token = await connect({ prompt: '', force: true })
+      } catch (e) {
+        // Silent connect failed, maybe user needs to interact
+        return
+      }
     }
     
-    const token = accessToken.value
     if (!token) return
 
     isSyncing.value = true
@@ -179,15 +219,15 @@ export function useGoogleSync() {
     if (!settings.googleDriveEnabled) return
     if (!navigator.onLine) return
     
-    if (!accessToken.value && !hasToken) {
-      // For manual calls, we might want to connect, but for auto-sync we shouldn't
-      if (hasToken) return connect() 
+    let token = accessToken.value
+    if (!token) {
+      // If we don't have a token, we can't upload in background.
+      // If it's a manual sync (hasToken is true but actually refers to 'skip check' in my previous code)
+      // Wait, in previous code I used hasToken=true to mean "skip re-auth check".
+      // Let's fix the parameter name to 'manual'
       return
     }
 
-    const token = accessToken.value
-    if (!token) return
-    
     isSyncing.value = true
     syncError.value = null
     try {
@@ -213,7 +253,7 @@ export function useGoogleSync() {
     } catch (err) {
       syncError.value = err.message
       console.error('Upload error:', err)
-      throw err // Re-throw to be caught by sync/resolveConflict
+      throw err 
     } finally {
       isSyncing.value = false
     }
@@ -223,20 +263,22 @@ export function useGoogleSync() {
    * Disconnect Google Drive
    */
   async function disconnect() {
-    if (accessToken.value) {
+    const token = settings.googleAccessToken
+    if (token) {
       try {
-        await drive.revokeToken(accessToken.value)
+        await drive.revokeToken(token)
       } catch (err) {
         console.warn('Failed to revoke token:', err)
       }
     }
-    accessToken.value = null
     syncError.value = null
     syncConflict.value = null
     settings.updateSettings({ 
       googleDriveEnabled: false, 
       googleDriveFileId: null,
-      googleUserEmail: null 
+      googleUserEmail: null,
+      googleAccessToken: null,
+      googleTokenExpiresAt: null
     })
   }
 
@@ -244,16 +286,11 @@ export function useGoogleSync() {
   let uploadTimeout = null
 
   function scheduleUpload() {
-    // Auto-sync only works if we already have a token
-    // We don't want to pop up login windows automatically
-    // Also skip if there's an active conflict being shown
     if (!settings.googleDriveEnabled || !accessToken.value || syncConflict.value) return
     
     if (uploadTimeout) clearTimeout(uploadTimeout)
     uploadTimeout = setTimeout(() => {
-      // Auto-sync doesn't check for conflicts to keep it lightweight, 
-      // it assumes manual sync has resolved them.
-      upload(true).catch(() => {}) 
+      upload().catch(() => {}) 
     }, 15000) // Debounce 15 seconds for auto-sync
   }
 

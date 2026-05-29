@@ -8,7 +8,7 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.file'
 /**
  * Request an access token from Google using the Token Model.
  */
-export function requestAccessToken() {
+export function requestAccessToken(options = {}) {
   return new Promise((resolve, reject) => {
     if (typeof google === 'undefined') {
       return reject(new Error('Google Identity Services script not loaded'))
@@ -22,7 +22,10 @@ export function requestAccessToken() {
           if (response.error_description) {
             reject(new Error(response.error_description))
           } else if (response.access_token) {
-            resolve(response.access_token)
+            resolve({
+              token: response.access_token,
+              expiresIn: response.expires_in
+            })
           } else {
             reject(new Error('Unknown authentication error'))
           }
@@ -31,7 +34,14 @@ export function requestAccessToken() {
           reject(err)
         }
       })
-      client.requestAccessToken({ prompt: 'consent' })
+      
+      // Default to no prompt for more seamless experience if already consented
+      const requestOptions = {
+        prompt: options.prompt || '',
+        ...options
+      }
+      
+      client.requestAccessToken(requestOptions)
     } catch (err) {
       reject(err)
     }
