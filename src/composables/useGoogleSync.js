@@ -5,15 +5,16 @@ import { useProgressStore } from '../stores/useProgressStore'
 import { useSettingsStore } from '../stores/useSettingsStore'
 import * as drive from '../api/googleDrive'
 
+// Shared state across all instances of the composable
+const accessToken = ref(null)
+const isSyncing = ref(false)
+const syncError = ref(null)
+
 export function useGoogleSync() {
   const decksStore = useDecksStore()
   const cardsStore = useCardsStore()
   const progressStore = useProgressStore()
   const settings = useSettingsStore()
-
-  const accessToken = ref(null)
-  const isSyncing = ref(false)
-  const syncError = ref(null)
 
   /**
    * Initialize sync: Connect and do initial download/merge
@@ -39,10 +40,10 @@ export function useGoogleSync() {
       let file = await drive.findBackupFile(token)
       if (file) {
         settings.updateSettings({ googleDriveFileId: file.id, googleDriveEnabled: true })
-        await downloadAndMerge()
+        await downloadAndMerge(true) // Pass true to avoid infinite loop or redundant checks
       } else {
         // First time backup: upload current local state
-        await upload()
+        await upload(true)
         file = await drive.findBackupFile(token)
         if (file) settings.updateSettings({ googleDriveFileId: file.id, googleDriveEnabled: true })
       }
@@ -57,15 +58,36 @@ export function useGoogleSync() {
   /**
    * Download from Drive and merge with local state
    */
-  async function downloadAndMerge() {
-    if (!accessToken.value || !settings.googleDriveFileId) return
-    if (!navigator.onLine) return // Silently skip if offline
+  async function downloadAndMerge(hasToken = false) {
+    if (!settings.googleDriveEnabled) return
+    if (!navigator.onLine) return
     
+    if (!accessToken.value && !hasToken) {
+      return connect() // Try to connect if token is missing
+    }
+    
+    const token = accessToken.value
+    if (!token) return
+
     isSyncing.value = true
+    syncError.value = null
     try {
-      const remoteData = await drive.fetchDriveData(accessToken.value, settings.googleDriveFileId)
+      // Ensure we have a file ID
+      let fileId = settings.googleDriveFileId
+      if (!fileId) {
+        const file = await drive.findBackupFile(token)
+        if (file) {
+          fileId = file.id
+          settings.updateSettings({ googleDriveFileId: fileId })
+        } else {
+          // No backup found on drive, nothing to download
+          return
+        }
+      }
+
+      const remoteData = await drive.fetchDriveData(token, fileId)
       
-      // Merge logic (Similar to SettingsView.vue but automated)
+      // Merge logic
       if (remoteData.decks) {
         for (const deck of remoteData.decks) {
           const exists = decksStore.decks.find(d => d.id === deck.id)
@@ -89,6 +111,7 @@ export function useGoogleSync() {
       settings.updateSettings({ lastSyncAt: new Date().toISOString() })
     } catch (err) {
       syncError.value = err.message
+      console.error('Download error:', err)
     } finally {
       isSyncing.value = false
     }
@@ -112,11 +135,19 @@ export function useGoogleSync() {
   /**
    * Upload current local state to Drive
    */
-  async function upload() {
-    if (!accessToken.value) return
-    if (!navigator.onLine) return // Silently skip if offline
+  async function upload(hasToken = false) {
+    if (!settings.googleDriveEnabled) return
+    if (!navigator.onLine) return
+    
+    if (!accessToken.value && !hasToken) {
+      return connect() // Try to connect if token is missing
+    }
+
+    const token = accessToken.value
+    if (!token) return
     
     isSyncing.value = true
+    syncError.value = null
     try {
       const payload = {
         version: 1,
@@ -127,7 +158,7 @@ export function useGoogleSync() {
       }
       
       const result = await drive.uploadDriveData(
-        accessToken.value, 
+        token, 
         settings.googleDriveFileId, 
         payload
       )
@@ -139,21 +170,44 @@ export function useGoogleSync() {
       settings.updateSettings({ lastSyncAt: payload.exportedAt })
     } catch (err) {
       syncError.value = err.message
+      console.error('Upload error:', err)
     } finally {
       isSyncing.value = false
     }
+  }
+
+  /**
+   * Disconnect Google Drive
+   */
+  async function disconnect() {
+    if (accessToken.value) {
+      try {
+        await drive.revokeToken(accessToken.value)
+      } catch (err) {
+        console.warn('Failed to revoke token:', err)
+      }
+    }
+    accessToken.value = null
+    syncError.value = null
+    settings.updateSettings({ 
+      googleDriveEnabled: false, 
+      googleDriveFileId: null,
+      googleUserEmail: null 
+    })
   }
 
   // ── Auto-Sync Watchers ─────────────────────────────────────────────────────
   let uploadTimeout = null
 
   function scheduleUpload() {
+    // Auto-sync only works if we already have a token
+    // We don't want to pop up login windows automatically
     if (!settings.googleDriveEnabled || !accessToken.value) return
     
     if (uploadTimeout) clearTimeout(uploadTimeout)
     uploadTimeout = setTimeout(() => {
-      upload()
-    }, 5000) // Debounce 5 seconds
+      upload(true)
+    }, 10000) // Debounce 10 seconds for auto-sync
   }
 
   // Watch for data changes across stores
@@ -167,6 +221,7 @@ export function useGoogleSync() {
     syncError,
     connect,
     upload,
+    disconnect,
     downloadAndMerge
   }
 }

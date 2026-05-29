@@ -14,7 +14,7 @@ const decksStore    = useDecksStore()
 const cardsStore    = useCardsStore()
 const progressStore = useProgressStore()
 const { speak }     = useSpeech()
-const { isSyncing, syncError, connect, upload } = useGoogleSync()
+const { isSyncing, syncError, connect, upload, disconnect: disconnectDrive } = useGoogleSync()
 
 // Connectivity state
 const isOnline = ref(navigator.onLine)
@@ -507,7 +507,7 @@ function clearAllData() {
                 <span v-if="isSyncing">⏳ Syncing…</span>
                 <span v-else>🔄 Sync Now</span>
               </button>
-              <button class="btn btn-ghost btn-sm text-danger" @click="googleDriveEnabled = false" :disabled="!isOnline">
+              <button class="btn btn-ghost btn-sm text-danger" @click="disconnectDrive" :disabled="!isOnline">
                 Disconnect
               </button>
             </div>
