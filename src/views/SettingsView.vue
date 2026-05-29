@@ -14,7 +14,15 @@ const decksStore    = useDecksStore()
 const cardsStore    = useCardsStore()
 const progressStore = useProgressStore()
 const { speak }     = useSpeech()
-const { isSyncing, syncError, connect, upload } = useGoogleSync()
+const { 
+  isSyncing, 
+  syncError, 
+  syncConflict, 
+  connect, 
+  sync: syncNow, 
+  disconnect: disconnectDrive, 
+  resolveConflict 
+} = useGoogleSync()
 
 // Connectivity state
 const isOnline = ref(navigator.onLine)
@@ -211,6 +219,25 @@ function mergeProgress(incoming) {
 
 // ── Clear all data ────────────────────────────────────────────────────────────
 const showClearConfirm = ref(false)
+
+// ── Conflict Resolution ───────────────────────────────────────────────────────
+const showOverwriteConfirm = ref(false)
+
+function handleResolve(action) {
+  if (action === 'overwrite' && !showOverwriteConfirm.value) {
+    showOverwriteConfirm.value = true
+    return
+  }
+  
+  if (action === 'overwrite-final') {
+    resolveConflict('overwrite')
+    showOverwriteConfirm.value = false
+    return
+  }
+
+  resolveConflict(action)
+  showOverwriteConfirm.value = false
+}
 
 // ── Accordion: only one panel open at a time ──────────────────────────────────
 const openPanel = ref('profile')
@@ -486,7 +513,7 @@ function clearAllData() {
           </div>
 
           <div v-if="!googleDriveEnabled" class="mt-1">
-            <button class="btn btn-primary w-100" @click="connect" :disabled="!isOnline">
+            <button class="btn btn-primary w-100" @click="connect({force: true})" :disabled="!isOnline">
               Connect Google Account
             </button>
           </div>
@@ -503,11 +530,11 @@ function clearAllData() {
             </div>
 
             <div class="sync-actions mt-2">
-              <button class="btn btn-ghost btn-sm" :disabled="isSyncing || !isOnline" @click="upload">
+              <button class="btn btn-ghost btn-sm" :disabled="isSyncing || !isOnline" @click="syncNow({force: true})">
                 <span v-if="isSyncing">⏳ Syncing…</span>
                 <span v-else>🔄 Sync Now</span>
               </button>
-              <button class="btn btn-ghost btn-sm text-danger" @click="googleDriveEnabled = false" :disabled="!isOnline">
+              <button class="btn btn-ghost btn-sm text-danger" @click="disconnectDrive" :disabled="!isOnline">
                 Disconnect
               </button>
             </div>
@@ -569,6 +596,45 @@ function clearAllData() {
         </div>
       </div>
     </div>
+
+    <!-- Conflict Resolution Dialog -->
+    <div v-if="syncConflict" class="modal-backdrop">
+      <div class="modal card-surface">
+        <h2>🔄 Sync Conflict</h2>
+        <p>Newer data was found on Google Drive:</p>
+        <div class="conflict-details mt-1 text-muted">
+          <div>Online version: <b>{{ new Date(syncConflict.remoteTime).toLocaleString() }}</b></div>
+          <div>Local version: <b>{{ syncConflict.localTime ? new Date(syncConflict.localTime).toLocaleString() : 'Never' }}</b></div>
+        </div>
+        <p class="mt-1">What would you like to do?</p>
+        
+        <div class="flex-col gap-1 mt-2">
+          <button class="btn btn-primary w-100" @click="handleResolve('merge')">
+            📥 Download & Merge Remote Data
+          </button>
+          <button class="btn btn-ghost w-100" @click="handleResolve('overwrite')">
+            📤 Overwrite Remote with Local
+          </button>
+          <button class="btn btn-secondary w-100" @click="handleResolve('cancel')">
+            ❌ Cancel Sync
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overwrite Final Confirmation -->
+    <div v-if="showOverwriteConfirm" class="modal-backdrop" @click.self="showOverwriteConfirm = false">
+      <div class="modal card-surface">
+        <h2>⚠️ Are you sure?</h2>
+        <p>This will <b>permanently overwrite</b> the newer data on your Google Drive with your current local version.</p>
+        <p class="text-danger">This cannot be undone.</p>
+        <div class="flex gap-1 mt-2" style="justify-content:flex-end">
+          <button class="btn btn-secondary" @click="showOverwriteConfirm = false">Cancel</button>
+          <button class="btn btn-danger" @click="handleResolve('overwrite-final')">Yes, Overwrite Remote</button>
+        </div>
+      </div>
+    </div>
+
   </main>
 </template>
 
@@ -840,4 +906,12 @@ function clearAllData() {
   text-decoration: underline;
   font-weight: 600;
 }
+
+.conflict-details {
+  background: var(--color-surface-alt);
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.flex-col { display: flex; flex-direction: column; }
 </style>
