@@ -150,6 +150,7 @@ export function useGoogleSync() {
       } else {
         // Local is newer or equal, just upload
         await upload()
+        autoSync.value = true
       }
     } catch (err) {
       syncError.value = err.message
@@ -191,9 +192,11 @@ export function useGoogleSync() {
         }
         // 2. Upload merged state
         await upload()
+        autoSync.value = true
       } else if (action === 'overwrite') {
         // Just upload current local state
         await upload()
+        autoSync.value = true
       }
       // 'cancel' action just exits as conflict was already cleared
     } catch (err) {
@@ -307,6 +310,7 @@ export function useGoogleSync() {
     isSyncing,
     syncError,
     syncConflict,
+    autoSync,
     connect,
     sync,
     disconnect,

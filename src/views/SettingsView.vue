@@ -18,6 +18,7 @@ const {
   isSyncing, 
   syncError, 
   syncConflict, 
+  autoSync,
   connect, 
   sync: syncNow, 
   disconnect: disconnectDrive, 
@@ -523,8 +524,11 @@ function clearAllData() {
               <span class="status-dot" :class="isOnline ? 'online' : 'offline'"></span>
               <div class="sync-text">
                 <div class="sync-label">Google Drive Connected</div>
-                <div class="sync-time text-muted">
+                <div v-if="autoSync" class="sync-time text-muted">
                   Last sync: {{ lastSyncAt ? new Date(lastSyncAt).toLocaleString() : 'Never' }}
+                </div>
+                <div v-if="!autoSync" class="sync-time text-muted">
+                  ⚠️ Auto Sync Suspended, Last sync: {{ lastSyncAt ? new Date(lastSyncAt).toLocaleString() : 'Never' }}
                 </div>
               </div>
             </div>
