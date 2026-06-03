@@ -90,7 +90,6 @@ export const useProgressStore = defineStore('progress', () => {
   }
 
   function decayFactor(days, decayDays) {
-    if (days >= decayDays) return 0
     return Math.pow(2, - days / decayDays)
   }
 
