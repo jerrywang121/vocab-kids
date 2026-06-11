@@ -9,6 +9,8 @@ import { PROVIDERS }        from '../api/providers.js'
 import { useSpeech }        from '../composables/useSpeech'
 import { useGoogleSync }    from '../composables/useGoogleSync'
 
+const appVersion = __APP_VERSION__
+
 const settings      = useSettingsStore()
 const decksStore    = useDecksStore()
 const cardsStore    = useCardsStore()
@@ -583,6 +585,7 @@ function clearAllData() {
         </svg>
         View source on GitHub
       </a>
+      <span class="app-version">v{{ appVersion }}</span>
     </div>
 
     <div class="legal-footer">
@@ -875,6 +878,8 @@ function clearAllData() {
 .github-footer {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
   padding: 1.5rem 0 0.5rem;
 }
 .github-footer-link {
@@ -898,6 +903,12 @@ function clearAllData() {
   height: 20px;
   fill: currentColor;
   flex-shrink: 0;
+}
+.app-version {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 .legal-footer {
   display: flex;
