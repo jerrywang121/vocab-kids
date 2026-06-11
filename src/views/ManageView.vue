@@ -6,6 +6,7 @@ import { useProgressStore } from '../stores/useProgressStore'
 import { useSettingsStore } from '../stores/useSettingsStore'
 import { convertWordsToCards, enrichWithAI } from '../api/ai.js'
 import { lookupWordCards } from '../api/dictionary.js'
+import { downloadBackup } from '../utils/dataPortability.js'
 import DeckCard       from '../components/DeckCard.vue'
 import DeckFormModal  from '../components/DeckFormModal.vue'
 import CardFormModal  from '../components/CardFormModal.vue'
@@ -267,20 +268,11 @@ function timeAgo(iso) {
 
 // ── Data export / import (full backup) ───────────────────
 function exportData() {
-  const payload = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    decks: decksStore.decks,
-    cards: cardsStore.cards,
+  downloadBackup({
+    decks:    decksStore.decks,
+    cards:    cardsStore.cards,
     progress: progressStore.progress,
-  }
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `vocabkids-backup-${new Date().toISOString().slice(0,10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  })
 }
 </script>
 

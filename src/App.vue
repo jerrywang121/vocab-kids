@@ -3,7 +3,9 @@ import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSettingsStore } from './stores/useSettingsStore'
 import { useGoogleSync } from './composables/useGoogleSync'
+import { useAppUpdate } from './composables/useAppUpdate'
 import AppHeader from './components/AppHeader.vue'
+import UpdateBanner from './components/UpdateBanner.vue'
 
 const settings = useSettingsStore()
 const { colorScheme, theme, googleDriveEnabled } = storeToRefs(settings)
@@ -43,10 +45,20 @@ watch(colorScheme, (val) => {
 watch(isDark, (val) => {
   document.body.classList.toggle('dark', val)
 }, { immediate: true })
+
+// PWA update notification
+const { needRefresh, dismissed, applyUpdate, dismissUpdate } = useAppUpdate()
+const appVersion = __APP_VERSION__
 </script>
 
 <template>
   <AppHeader />
+  <UpdateBanner
+    v-if="needRefresh && !dismissed"
+    :version="appVersion"
+    @update="applyUpdate"
+    @dismiss="dismissUpdate"
+  />
   <RouterView />
 </template>
 
