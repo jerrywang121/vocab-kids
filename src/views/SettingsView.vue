@@ -8,6 +8,7 @@ import { useProgressStore } from '../stores/useProgressStore'
 import { PROVIDERS }        from '../api/providers.js'
 import { useSpeech }        from '../composables/useSpeech'
 import { useGoogleSync }    from '../composables/useGoogleSync'
+import { downloadBackup, migrateBackupData } from '../utils/dataPortability.js'
 
 const appVersion = __APP_VERSION__
 
@@ -158,20 +159,11 @@ async function fetchModels() {
 
 // ── Export / Import ───────────────────────────────────────────────────────────
 function exportData() {
-  const payload = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    decks: decksStore.decks,
-    cards: cardsStore.cards,
+  downloadBackup({
+    decks:    decksStore.decks,
+    cards:    cardsStore.cards,
     progress: progressStore.progress,
-  }
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = `vocabkids-backup-${new Date().toISOString().slice(0,10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  })
 }
 
 const importFileInput = ref(null)
@@ -186,9 +178,17 @@ async function handleImport(e) {
     const text   = await file.text()
     const parsed = JSON.parse(text)
 
-    if (parsed.decks)    mergeById(decksStore.decks, parsed.decks, d => decksStore.updateDeck(d.id, d), d => decksStore.addDeck(d))
-    if (parsed.cards)    mergeById(cardsStore.cards, parsed.cards, c => cardsStore.updateCard(c.id, c), c => cardsStore.addCard(c))
-    if (parsed.progress) mergeProgress(parsed.progress)
+    const { ok, data, error } = migrateBackupData(parsed)
+    if (!ok) {
+      importMsg.value = `❌ ${error}`
+      e.target.value = ''
+      setTimeout(() => importMsg.value = '', 6000)
+      return
+    }
+
+    if (data.decks)    mergeById(decksStore.decks, data.decks, d => decksStore.updateDeck(d.id, d), d => decksStore.addDeck(d))
+    if (data.cards)    mergeById(cardsStore.cards, data.cards, c => cardsStore.updateCard(c.id, c), c => cardsStore.addCard(c))
+    if (data.progress) mergeProgress(data.progress)
 
     importMsg.value = '✅ Import complete!'
   } catch (err) {
