@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-VocabKids is a browser-based flashcard app to help kids learn English vocabulary. It runs entirely client-side (no server required) and stores all data in the browser's `localStorage`.
+VocabKids is a browser-based flashcard app to help kids learn English vocabulary. It runs entirely client-side (no server required) and stores all data in the browser's `IndexedDB`.
 
 ---
 
@@ -20,10 +20,10 @@ VocabKids is a browser-based flashcard app to help kids learn English vocabulary
 | Framework | Vue 3 (`<script setup>`) | Reactive UI, SFC, great ecosystem |
 | Build tool | Vite | Fast HMR, zero-config, ES modules |
 | Routing | Vue Router 4 (hash mode) | No server config needed |
-| State | Pinia + pinia-plugin-persistedstate | Simple stores, auto localStorage sync |
+| State | Pinia + pinia-plugin-persistedstate | Simple stores, auto IndexedDB sync |
 | Charts | Chart.js + vue-chartjs | Lightweight; achievements page only |
 | Styling | CSS3 + Custom Properties | Theme switching without JS |
-| Storage | `localStorage` via Pinia plugin | Zero infrastructure |
+| Storage | `IndexedDB` via Pinia plugin + `idb-keyval` | Zero infrastructure; larger quota than localStorage |
 | Dictionary API | `api.dictionaryapi.dev` | Free, no key required |
 | AI API | User-configured; 17+ providers supported | Optional enrichment & quiz generation |
 | TTS | Web Speech API (`SpeechSynthesis`) | Built-in, no extra dependency |
@@ -116,18 +116,18 @@ A hub page with three standalone word games. Each game has its own deck-select s
 
 ## 5. Data Architecture
 
-### 5.1 Pinia Stores + localStorage Persistence
+### 5.1 Pinia Stores + IndexedDB Persistence
 
-All state lives in four Pinia stores, each persisted to a separate `localStorage` key via `pinia-plugin-persistedstate`:
+All state lives in four Pinia stores, each persisted to a separate `IndexedDB` key via `pinia-plugin-persistedstate` (backed by `idb-keyval`). On first boot, any existing `localStorage` data is automatically migrated to IndexedDB (`src/utils/migrateFromLocalStorage.js`).
 
-| Store | localStorage key | Contents |
+| Store | IndexedDB key | Contents |
 |---|---|---|
 | `useDecksStore` | `vocab-decks` | `decks[]` |
 | `useCardsStore` | `vocab-cards` | `cards[]` |
 | `useProgressStore` | `vocab-progress` | `progress[]`, `quizSessions[]`, `achievementSnapshots[]` |
 | `useSettingsStore` | `vocab-settings` | `settings` object |
 
-> **No direct `localStorage` calls outside of Pinia stores** (except the AI rate-limit timestamp buffer stored under `vocab-ai-rate-limit`).
+> **No direct storage calls outside of Pinia stores** (except the AI rate-limit timestamp buffer stored under `vocab-ai-rate-limit` in `localStorage` — ephemeral data that does not need to survive a page reload).
 
 ### 5.2 FlashCard Fields
 
@@ -263,7 +263,7 @@ Provider definitions live in `api/providers.js` (`PROVIDERS` array). Each entry 
 | `listModels(settingsObj)` | Fetch available model IDs from the provider's `/models` endpoint |
 
 #### Rate limiting
-`api/ai.js` enforces a configurable calls-per-minute limit (stored in `vocab-ai-rate-limit` in localStorage). Default: 10 calls/min; 0 = unlimited.
+`api/ai.js` enforces a configurable calls-per-minute limit (stored in `vocab-ai-rate-limit` in `localStorage` — ephemeral, not user data). Default: 10 calls/min; 0 = unlimited.
 
 #### Age-group awareness
 All AI prompts are tailored to the `userAgeGroup` setting:
@@ -393,7 +393,7 @@ npm run preview
 | `dictionaryApiEnabled` | boolean | `true` | |
 | `aiProvider` | string | `'openai'` | provider ID from `providers.js` |
 | `aiApiUrl` | string | `''` | override / custom base URL |
-| `aiApiKey` | string | `''` | stored in localStorage (plain) |
+| `aiApiKey` | string | `''` | stored in IndexedDB (plain) |
 | `aiModel` | string | `''` | empty = use provider's `defaultModel` |
 | `aiCallsPerMinute` | number | `10` | 0 = unlimited |
 | `userAgeGroup` | string | `'6-8'` | `'3-5'` \| `'6-8'` \| `'9-11'` \| `'12+'` |
@@ -428,4 +428,4 @@ VocabKids ships as a fully installable PWA via `vite-plugin-pwa` (Workbox).
 1. User opens the hosted HTTPS URL in Chrome (Android) or Safari (iOS)
 2. Browser shows "Add to Home Screen" prompt automatically
 3. App icon appears on home screen; opens standalone (no browser UI)
-4. All data (`localStorage`) is already on-device — fully offline after first load
+4. All data (`IndexedDB`) is already on-device — fully offline after first load
