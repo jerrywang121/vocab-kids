@@ -74,7 +74,7 @@ export const useSettingsStore = defineStore('settings', () => {
 }, {
   persist: {
     key: 'vocab-settings',
-    afterRestore: (ctx) => {
+    afterHydrate: (ctx) => {
       const valid = ['3-5', '6-8', '9-11', '12+']
       if (!valid.includes(ctx.store.userAgeGroup)) ctx.store.userAgeGroup = '6-8'
     },

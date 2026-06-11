@@ -7,7 +7,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-jerrywang121%2Fvocab--kids-181717?logo=github)](https://github.com/jerrywang121/vocab-kids)
 
 
-VocabKids lets children (and their parents/teachers) easily build custom word decks with the help of AI, practise with animated flashcards, test their knowledge with auto-generated quizzes, and play word games. Everything runs in the browser and persists in `localStorage` — no server, no sign-up.
+VocabKids lets children (and their parents/teachers) easily build custom word decks with the help of AI, practise with animated flashcards, test their knowledge with auto-generated quizzes, and play word games. Everything runs in the browser and persists in `IndexedDB` — no server, no sign-up.
 
 > *... OK, it is for my son, who is doing 11+, having 1000+ words on his list that he seems never want to look at. Built this to help him "gaming" on it... hope it works. If you have the same experience, feel free to [try it out](https://jerrywang121.github.io/vocab-kids/)!*
 
@@ -81,7 +81,7 @@ VocabKids is a **Progressive Web App** — no app store needed.
 2. Tap **"Add to Home Screen"** from the browser menu
 3. An icon appears on your home screen — it opens fullscreen, just like a native app
 
-Works offline once installed. All data stays on-device via `localStorage`.
+Works offline once installed. All data stays on-device via `IndexedDB`.
 
 ---
 
@@ -111,7 +111,7 @@ lingokids-local/
 │   ├── main.js           # app entry point
 │   ├── App.vue           # root: theme + dark-mode binding
 │   ├── router/           # Vue Router (hash mode, 7 routes)
-│   ├── stores/           # Pinia stores (auto-persisted to localStorage)
+│   ├── stores/           # Pinia stores (auto-persisted to IndexedDB)
 │   │   ├── useDecksStore.js
 │   │   ├── useCardsStore.js
 │   │   ├── useProgressStore.js
@@ -229,7 +229,7 @@ Import merges by `id`; newer progress entries win on conflict.
 | State | Pinia + `pinia-plugin-persistedstate` |
 | Charts | Chart.js + `vue-chartjs` |
 | Styling | CSS3 custom properties |
-| Storage | `localStorage` (via Pinia plugin) |
+| Storage | `IndexedDB` (via Pinia plugin + `idb-keyval`) |
 | TTS | Web Speech API |
 | PWA | `vite-plugin-pwa` + Workbox (offline, installable) |
 
