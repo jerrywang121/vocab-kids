@@ -14,11 +14,11 @@ const FALLBACK_AVATAR = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/s
 function onAvatarError(e) { e.target.src = FALLBACK_AVATAR }
 
 const navLinks = [
-  { to: '/learn',        label: 'Learn',        icon: '🔄' },
+  { to: '/learn',        label: 'Learn',        icon: '📖' },
   { to: '/quiz',         label: 'Quiz',         icon: '🧠' },
   { to: '/games',        label: 'Games',        icon: '🎮' },
   { to: '/achievements', label: 'Achievements', icon: '🏆' },
-  { to: '/manage',       label: 'Manage',       icon: '📖' },
+  { to: '/manage',       label: 'Manage',       icon: '🗃️' },
 ]
 
 
