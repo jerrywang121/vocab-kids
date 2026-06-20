@@ -280,7 +280,7 @@ function exportData() {
   <main class="page">
     <!-- ── Header ─────────────────────────── -->
     <div class="flex items-center justify-between">
-      <h1>{{ activeDeck ? `📖 ${activeDeck.name}` : '📖 Manage' }}</h1>
+      <h1>{{ activeDeck ? `🗃️ ${activeDeck.name}` : '🗃️ Manage' }}</h1>
       <div class="flex gap-1">
         <button v-if="activeDeck" class="btn btn-secondary" @click="activeDeck = null">← Decks</button>
         <button v-if="!activeDeck" class="btn btn-primary" @click="openNewDeck">+ New Deck</button>

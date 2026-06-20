@@ -205,7 +205,7 @@ function reset() {
       <div class="breakdown card-surface mt-2">
         <h3 style="font-size:1rem;margin-bottom:0.75rem">Breakdown</h3>
         <div v-for="(val, type) in scoreByType" :key="type" class="breakdown-row">
-          <span class="breakdown-label">{{ { definition:'📖 Definition', synonym:'🔀 Synonym/Antonym', fillgap:'✏️ Fill the Gap' }[type] }}</span>
+          <span class="breakdown-label">{{ { definition:'📑 Definition', synonym:'🔀 Synonym/Antonym', fillgap:'✏️ Fill the Gap' }[type] }}</span>
           <span class="breakdown-score">{{ val[0] }} / {{ val[1] }}</span>
         </div>
       </div>
