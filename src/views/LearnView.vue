@@ -217,6 +217,7 @@ function restart() {
         <span class="progress-text text-muted">{{ learnedCount }} / {{ deckCards.length }} learned</span>
         <button
           class="mode-toggle-btn"
+          :class="{ active: cardMode === 'full' }"
           @click="toggleMode"
           :title="cardMode === 'flip' ? 'Switch to Full view' : 'Switch to Flip view'"
         >
@@ -343,7 +344,11 @@ function restart() {
   display: flex;
   align-items: center;
 }
-.mode-toggle-btn:hover { background: var(--color-primary); color: #fff; }
+.mode-toggle-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+.mode-toggle-btn:not(.active):hover { background: var(--color-primary); color: #fff; }
 .mode-toggle-btn:active { transform: scale(0.95); }
 
 .progress-text { font-size: 0.9rem; font-weight: 700; }
