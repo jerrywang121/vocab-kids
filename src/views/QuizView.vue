@@ -20,7 +20,10 @@ const answers        = ref([])        // { questionIdx, chosenIndex, correct }[]
 const chosenIndex    = ref(null)
 const feedbackClass  = ref('')
 
-const selectedDeck  = computed(() => decksStore.decks.find(d => d.id === selectedDeckId.value))
+const selectedDeck  = computed(() => {
+  if (selectedDeckId.value === 'all') return { id: 'all', name: 'All Cards' }
+  return decksStore.decks.find(d => d.id === selectedDeckId.value)
+})
 const currentQ      = computed(() => session.value?.questions[currentIdx.value])
 const totalQ        = computed(() => session.value?.questions.length ?? 0)
 
@@ -135,7 +138,21 @@ function reset() {
 
     <!-- ── Deck selector ───────────────────────── -->
     <template v-if="phase === 'select'">
-      <p class="text-muted mt-1">Choose a deck to quiz yourself on:</p>
+      <div v-if="decksStore.decks.length > 1" class="quiz-all-section mt-2">
+        <button
+          class="quiz-all-btn card-surface"
+          :disabled="cardsStore.uniqueCardCount('all') < 6"
+          @click="startQuiz('all')"
+        >
+          <span class="deck-name">🧠 Quiz All Cards</span>
+          <span class="deck-count text-muted">
+            {{ cardsStore.cards.length }} total
+            <span v-if="cardsStore.uniqueCardCount('all') < 6">&nbsp;(need 6+ unique)</span>
+          </span>
+        </button>
+      </div>
+
+      <p class="text-muted mt-2">Choose a deck to quiz yourself on:</p>
       <p v-if="!decksStore.decks.length" class="text-muted mt-2">
         No decks yet — <RouterLink to="/manage">create one first</RouterLink>.
       </p>
@@ -239,6 +256,26 @@ body.dark .choice-btn.wrong   { background: #3a1a1a !important; color: #ef9a9a !
 }
 .deck-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
 .deck-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.quiz-all-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 1rem;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s, box-shadow 0.15s;
+  min-height: 54px;
+}
+.quiz-all-btn .text-muted { color: rgba(255,255,255,0.8); }
+.quiz-all-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
+.quiz-all-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .deck-name { font-weight: 800; font-size: 1rem; }
 .deck-count { font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; }
 .unique-badge {

@@ -6,14 +6,15 @@ export const useCardsStore = defineStore('cards', () => {
   const cards = ref([])
 
   function cardsForDeck(deckId) {
+    if (deckId === 'all') return cards.value
     return cards.value.filter(c => c.deckId === deckId)
   }
 
-  /** Count of cards with a unique word combination in a deck */
+  /** Count of cards with a unique word combination in a deck (or all decks) */
   function uniqueCardCount(deckId) {
     const seen = new Set()
     for (const c of cards.value) {
-      if (c.deckId !== deckId) continue
+      if (deckId !== 'all' && c.deckId !== deckId) continue
       seen.add(`${c.word.trim().toLowerCase()}`)
     }
     return seen.size
