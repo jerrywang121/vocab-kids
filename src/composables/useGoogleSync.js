@@ -297,7 +297,7 @@ export function useGoogleSync() {
     if (uploadTimeout) clearTimeout(uploadTimeout)
     uploadTimeout = setTimeout(() => {
       sync().catch(() => {}) 
-    }, 15000) // Debounce 15 seconds for auto-sync
+    }, 5000) // Debounce 5 seconds for auto-sync
   }
 
   // Watch for data changes across stores
